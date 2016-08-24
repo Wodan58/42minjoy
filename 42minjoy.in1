@@ -1,0 +1,27 @@
+(* begin of include file *)
+
+(* SET-  and  IF-DIRECTIVES  *)
+
+%SET  X  =  1
+%IF   =  X  1           [ 11111 ]
+%IF   =  X  2           [ 22222 ]
+[  put  ]
+
+(* ALTERNATIVE RADIX for input numbers *)
+
+(* default alternative radix is 2 *)
+[  &1000000   put  ]
+(* change default alternative radix *)   %RADIX 8
+[  &100  put  ]
+(* change default alternative radix *)   %RADIX 16
+[  &FF  put  ]
+
+(* SCAN-TIME EXPRESSIONS IN CHARACTER CONSTANTS *)
+
+%SET L = 65
+[  '\L  put  ]
+[  '\ + L 32   put  ]
+%SET L = 'G
+[  '\ + L - 'a 'A   put  ]
+
+(* end of include file *)
