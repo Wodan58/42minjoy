@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Os -s
 
 tutorial.out : joy.exe 42minjoy.lib tutorial.joy
-	./joy.exe <tutorial.joy >$@
+	joy.exe <tutorial.joy >$@
 
 joy.exe : joy.c
 	$(CC) $(CFLAGS) -o$@ $<
