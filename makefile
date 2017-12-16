@@ -4,11 +4,11 @@
 CC = gcc
 CFLAGS = -Os -s
 
-tutorial.out : joy.exe 42minjoy.lib tutorial.joy
-	joy.exe <tutorial.joy >$@
+demo.txt : joy 42minjoy.lib tutorial.joy
+	./joy <tutorial.joy >$@
 
-joy.exe : joy.c
+joy : joy.c
 	$(CC) $(CFLAGS) -o$@ $<
 
 clean :
-	rm -f joy.exe 42minjoy.lst tutorial.out
+	rm -f joy 42minjoy.lst demo.txt
