@@ -176,7 +176,7 @@ static void point(char diag, char *mes)
 	must_repeat_line = true;
     }
     if (diag == 'F')
-        exit(1);		/* R.W. */
+        exit(0);		/* R.W. */
 }  /* point */
 
 /* - - - - -   MODULE SCANNER  - - - - - */
