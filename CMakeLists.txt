@@ -11,6 +11,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0")     # debug, no optimisation
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage") # enabling coverage
 endif()
 add_executable(joy joy.c)
+if(WIN32)
+else()
 add_custom_target(demo.txt ALL
                   COMMAND joy <tutorial.joy >demo.txt
                   DEPENDS joy)
+endif()
