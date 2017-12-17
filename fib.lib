@@ -1,0 +1,3 @@
+branch == swap pair index i;
+fib    == dup 2 < [] [1 - dup fib swap 1 - fib +] branch;
+pair   == [] cons cons.
