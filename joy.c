@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.1
-    date    : 08/24/16
+    version : 1.2
+    date    : 12/24/17
 */
 #include <stdio.h>
 #include <string.h>
@@ -45,7 +45,8 @@ typedef unsigned char boolean;
 typedef enum {
     lbrack, rbrack, semic, period, def_equal,
 /* compulsory for scanutilities: */
-    charconst, stringconst, numberconst, leftparenthesis, hyphen, identifier
+    charconst, stringconst, numberconst, leftparenthesis, identifier
+/* hyphen */
 } symbol;
 
 typedef enum {
@@ -176,7 +177,7 @@ static void point(char diag, char *mes)
 	must_repeat_line = true;
     }
     if (diag == 'F')
-        exit(0);		/* R.W. */
+        exit(0);
 }  /* point */
 
 /* - - - - -   MODULE SCANNER  - - - - - */
@@ -212,7 +213,8 @@ static void erw(char *a, symbol s)
 {
     if (++lastresword > maxrestab)
 	point('F', "too many reserved words");
-    strcpy(reswords[lastresword].alf, a);
+    strncpy(reswords[lastresword].alf, a, reslength);
+    reswords[lastresword].alf[reslength] = 0;
     reswords[lastresword].symb = s;
 }  /* erw */
 
@@ -220,7 +222,8 @@ static void est(char *a, standardident s)
 {
     if (++laststdident > maxstdidenttab)
 	point('F', "too many identifiers");
-    strcpy(stdidents[laststdident].alf, a);
+    strncpy(stdidents[laststdident].alf, a, identlength);
+    stdidents[laststdident].alf[identlength] = 0;
     stdidents[laststdident].symb = s;
 }  /* est */
 
@@ -231,7 +234,8 @@ static void newfile(char *a)
     char str[256];
 #endif
 
-    strcpy(inputs[includelevel].nam, a);
+    strncpy(inputs[includelevel].nam, a, identlength);
+    inputs[includelevel].nam[identlength] = 0;
     inputs[includelevel].lastlinenumber = linenumber;
 #if 0
     sprintf(str, "%-*.*s", identlength, identlength, a);
@@ -385,7 +389,8 @@ static long value(void)
 	break;
 
     case '?':
-	scanf("%ld", &result);
+	if (scanf("%ld", &result) != 1)
+	    result = 0;
 	break;
 
     default:
@@ -562,6 +567,7 @@ begin:
 #endif
 		res[i = 0] = '-';
 		ident[i++] = '-';
+		ident[i] = res[i] = 0;
 		/* sym = hyphen; */	/* R.W. */
 		goto einde;
 	    }
@@ -643,24 +649,30 @@ begin:
 einde:  /* R.W. */
 	if (isupper(ch))
 	    do {
-		if (i < reslength)
+		if (i < reslength) {
 		    res[i] = ch;
-		if (i < identlength)
+		    res[i + 1] = 0;
+		}
+		if (i < identlength) {
 		    ident[i] = ch;
+		    ident[i + 1] = 0;
+		}
 		getch();
 		i++;
 	    } while (ch == '_' || isalnum(ch));
 	else if (!isspace(ch))		/* R.W. */
 	    do {
-		if (i < reslength)
+		if (i < reslength) {
 		    res[i] = ch;
-		if (i < identlength)
+		    res[i + 1] = 0;
+		}
+		if (i < identlength) {
 		    ident[i] = ch;
+		    ident[i + 1] = 0;
+		}
 		getch();
 		i++;
 	    } while (strchr(specials_repeat, ch));
-	res[i] = 0;
-	ident[i] = 0;
 	i = 1;
 	j = lastresword;
 	do {
@@ -1031,15 +1043,18 @@ static void readterm(memrange *);
 
 static void readfactor(memrange *where)
 {
+    memrange here;
+
     switch (sym) {
 
     case lbrack:
 	getsym();
 	*where = kons(list_, 0, 0);
 	m[*where].marked = true;
-	if (sym == lbrack || sym == identifier || sym == hyphen ||
-	    sym == charconst || sym == numberconst) {
-	    readterm((memrange *)&m[*where].val);
+	if (sym == lbrack || sym == identifier || sym == charconst ||
+		sym == numberconst) {	/* sym == hyphen */
+	    readterm(&here);
+	    m[*where].val = here;
 	}
 	break;
 
@@ -1078,8 +1093,8 @@ static void readterm(memrange *first)
     readfactor(first);
     i = *first;
     getsym();
-    while (sym == lbrack || sym == identifier || sym == hyphen ||
-	   sym == charconst || sym == numberconst) {
+    while (sym == lbrack || sym == identifier || sym == charconst ||
+		sym == numberconst) {	/* sym == hyphen */
 	readfactor(&m[i].nxt);
 	i = m[i].nxt;
 	getsym();
