@@ -13,13 +13,10 @@ endif()
 add_executable(joy joy.c)
 if(WIN32)
 else()
-add_custom_target(demo.txt ALL
-                  COMMAND joy <tutorial.joy >demo.txt
-                  DEPENDS joy)
 add_custom_target(demo1.txt ALL
-                  COMMAND joy fib.lib fib.joy >demo1.txt
+                  COMMAND joy <tutorial.joy >demo1.txt
                   DEPENDS joy)
 add_custom_target(demo2.txt ALL
-                  COMMAND joy fib.lib fib0.joy >demo2.txt
-                  DEPENDS joy)                  
+                  COMMAND joy fib.lib fib.joy >demo2.txt
+                  DEPENDS joy)                
 endif()
