@@ -11,4 +11,4 @@ joy : joy.c
 	$(CC) $(CFLAGS) -o$@ $<
 
 clean :
-	rm -f joy 42minjoy.lst demo.txt
+	rm -f joy 42minjoy.lst demo1.txt demo2.txt
