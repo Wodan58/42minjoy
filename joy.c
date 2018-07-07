@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.2
-    date    : 12/24/17
+    version : 1.3
+    date    : 07/07/18
 */
 #include <stdio.h>
 #include <string.h>
@@ -10,7 +10,9 @@
 #include <time.h>
 #include <setjmp.h>
 
+#if 0
 #define CORRECT_GARBAGE
+#endif
 
 #ifdef DEBUG
 int debug = 1;
@@ -786,7 +788,7 @@ static void initialise(void)
     unsigned i;
 
     iniscanner();
-    strcpy(specials_repeat, "=>.");	/* R.W. only: => is necessary */
+    strcpy(specials_repeat, "=>");	/* R.W. only: => is necessary */
     erw(".",	period);
     erw(";",	semic);
     erw("==",	def_equal);
