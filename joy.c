@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.3
-    date    : 07/07/18
+    version : 1.4
+    date    : 08/03/18
 */
 #include <stdio.h>
 #include <string.h>
@@ -794,36 +794,36 @@ static void initialise(void)
     erw("==",	def_equal);
     erw("[",	lbrack);
     erw("]",	rbrack);
-    est("*",		mul_);
-    est("+",		add_);
-    est("-",		sub_);
-    est("/",		div_);
-    est("<",		lss_);
-    est("=",		eql_);
-    est("and",		and_);
-    est("body",		body_);
-    est("cons",		cons_);
-    est("dip",		dip_);
-    est("dup",		dup_);
-    est("false",	false_);
-    est("get",		get_);
-    est("getch",	getch_);
-    est("i",		i_);
-    est("index",	index_);
-    est("not",		not_);
-    est("nothing",	nothing_);
-    est("or",		or_);
-    est("pop",		pop_);
-    est("put",		put_);
-    est("putch",	putch_);
-    est("sametype",	sametype_);
-    est("select",	select_);
-    est("stack",	stack_);
-    est("step",		step_);
-    est("swap",		swap_);
-    est("true",		true_);
-    est("uncons",	uncons_);
-    est("unstack",	unstack_);
+    est("*",        mul_);
+    est("+",        add_);
+    est("-",        sub_);
+    est("/",        div_);
+    est("<",        lss_);
+    est("=",        eql_);
+    est("and",      and_);
+    est("body",     body_);
+    est("cons",     cons_);
+    est("dip",      dip_);
+    est("dup",      dup_);
+    est("false",    false_);
+    est("get",      get_);
+    est("getch",    getch_);
+    est("i",        i_);
+    est("index",    index_);
+    est("not",      not_);
+    est("nothing",  nothing_);
+    est("or",       or_);
+    est("pop",      pop_);
+    est("put",      put_);
+    est("putch",    putch_);
+    est("sametype", sametype_);
+    est("select",   select_);
+    est("stack",    stack_);
+    est("step",     step_);
+    est("swap",     swap_);
+    est("true",     true_);
+    est("uncons",   uncons_);
+    est("unstack",  unstack_);
     for (i = mul_; i <= unstack_; i++)
 	if (i != stdidents[i].symb)
 	    point('F', "bad order in standard idents");
