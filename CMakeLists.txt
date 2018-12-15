@@ -16,7 +16,7 @@ else()
 add_custom_target(demo1.txt ALL
                   COMMAND joy <tutorial.joy >demo1.txt
                   DEPENDS joy)
-add_custom_target(demo2.txt ALL
-                  COMMAND joy fib.lib fib.joy >demo2.txt
-                  DEPENDS joy)                
+#add_custom_target(demo2.txt ALL
+#                  COMMAND joy fib.lib fib.joy >demo2.txt
+#                  DEPENDS joy)                
 endif()
