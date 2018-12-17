@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.4
-    date    : 08/03/18
+    version : 1.5
+    date    : 12/17/18
 */
 #include <stdio.h>
 #include <string.h>
@@ -211,22 +211,22 @@ static void iniscanner(void)
     must_repeat_line = false;
 }  /* iniscanner */
 
-static void erw(char *a, symbol s)
+static void erw(char *a, symbol symb)
 {
     if (++lastresword > maxrestab)
 	point('F', "too many reserved words");
     strncpy(reswords[lastresword].alf, a, reslength);
     reswords[lastresword].alf[reslength] = 0;
-    reswords[lastresword].symb = s;
+    reswords[lastresword].symb = symb;
 }  /* erw */
 
-static void est(char *a, standardident s)
+static void est(char *a, standardident symb)
 {
     if (++laststdident > maxstdidenttab)
 	point('F', "too many identifiers");
     strncpy(stdidents[laststdident].alf, a, identlength);
     stdidents[laststdident].alf[identlength] = 0;
-    stdidents[laststdident].symb = s;
+    stdidents[laststdident].symb = symb;
 }  /* est */
 
 static void newfile(char *a)
