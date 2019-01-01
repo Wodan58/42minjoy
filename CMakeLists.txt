@@ -95,4 +95,8 @@ add_custom_target(demo18.txt ALL
 add_custom_target(demo19.txt ALL
 		  DEPENDS joy
 		  COMMAND joy example.lib example.joy || (exit 0))
+# bad order in library
+add_custom_target(demo20.txt ALL
+		  DEPENDS joy
+		  COMMAND joy exam12.lib exam12.joy || (exit 0))
 endif()
