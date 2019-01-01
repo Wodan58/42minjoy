@@ -1,0 +1,9 @@
+%SET A = + 2 ( * 3 4 )
+%SET A = - 0 1
+%SET A = 'A'
+%SET A = 2
+%SET B = 3
+%SET C = * A B
+%SET C = / A B
+%SET C = > A B
+%SET C = < A B

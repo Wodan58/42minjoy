@@ -1,22 +1,3 @@
 %SET @ = + A B
 %SET C ?
 %UNKNOWN
-
-
-%PUT C
-
-
-
-%INCLUDE example.joy
-
-%SET C = A + B
-
-%SET A 1
-%SET B 2
-%SET C + A B
-
-( unsupported )
-
-%INCLUDE nonexist.in1
-
-"noexist.in2" include.

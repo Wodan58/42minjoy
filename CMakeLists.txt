@@ -51,7 +51,7 @@ add_custom_target(demo08.txt ALL
 		  COMMAND joy <exam03.joy || (exit 0))
 # "A" .. "Z" expected
 # "=" expected
-# unknown directive
+# illegal start of scan expr
 add_custom_target(demo09.txt ALL
 		  DEPENDS joy
 		  COMMAND joy <exam04.joy || (exit 0))
@@ -67,8 +67,16 @@ add_custom_target(demo11.txt ALL
 add_custom_target(demo12.txt ALL
 		  DEPENDS joy
 		  COMMAND joy <exam06.joy || (exit 0))
-# listing
+# unknown directive
 add_custom_target(demo13.txt ALL
 		  DEPENDS joy
-		  COMMAND joy <example.joy || (exit 0))
+		  COMMAND joy <exam07.joy || (exit 0))
+# ok
+add_custom_target(demo14.txt ALL
+		  DEPENDS joy
+		  COMMAND joy <exam08.joy || (exit 0))
+# listing
+add_custom_target(demo15.txt ALL
+		  DEPENDS joy
+		  COMMAND joy example.lib example.joy || (exit 0))
 endif()
