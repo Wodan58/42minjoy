@@ -75,8 +75,16 @@ add_custom_target(demo13.txt ALL
 add_custom_target(demo14.txt ALL
 		  DEPENDS joy
 		  COMMAND joy <exam08.joy || (exit 0))
-# listing
+# too many include files
 add_custom_target(demo15.txt ALL
+		  DEPENDS joy
+		  COMMAND joy <exam09.joy || (exit 0))
+# errorcount
+add_custom_target(demo16.txt ALL
+		  DEPENDS joy
+		  COMMAND joy <exam10.joy || (exit 0))
+# listing
+add_custom_target(demo17.txt ALL
 		  DEPENDS joy
 		  COMMAND joy example.lib example.joy || (exit 0))
 endif()

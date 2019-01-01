@@ -2,3 +2,6 @@
 %SET A = &2
 %SET A = -1
 %SET A = 'A'
+
+(* end *)
+.

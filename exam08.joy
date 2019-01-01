@@ -7,3 +7,6 @@
 %SET C = / A B
 %SET C = > A B
 %SET C = < A B
+
+(* end *)
+.

@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.5
-    date    : 12/17/18
+    version : 1.6
+    date    : 01/01/19
 */
 #include <stdio.h>
 #include <string.h>
@@ -397,7 +397,6 @@ static long value(void)
 
     default:
 	point('F', "illegal start of scan expr");
-	break;
     }  /* CASE */
 einde:
     return result;
@@ -1081,7 +1080,6 @@ static void readfactor(memrange *where)
 
     default:
 	point('F', "internal in readfactor");
-	break;
     }  /* CASE */
     m[*where].marked = true;
 }  /* readfactor */
@@ -1474,7 +1472,6 @@ static void joy(memrange nod)
 
 	default:
 	    point('F', "internal error in interpreter");
-	    break;
 	}  /* CASE */
 	stat_ops++;
 	nod = m[nod].nxt;

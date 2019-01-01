@@ -7,4 +7,6 @@
 %SET C = > A B
 %SET C = < A B
 %SET C = ?
-%INCLUDE exam03.joy
+
+(* end *)
+.

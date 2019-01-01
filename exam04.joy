@@ -1,3 +1,6 @@
 %SET @ = + A B
 %SET C ?
 %UNKNOWN
+
+(* end *)
+.
