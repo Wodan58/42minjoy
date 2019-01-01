@@ -83,8 +83,16 @@ add_custom_target(demo15.txt ALL
 add_custom_target(demo16.txt ALL
 		  DEPENDS joy
 		  COMMAND joy <exam10.joy || (exit 0))
-# listing
+# pass 2: "==" expected
 add_custom_target(demo17.txt ALL
+		  DEPENDS joy
+		  COMMAND joy exam11.joy || (exit 0))
+# (not open for reading)
+add_custom_target(demo18.txt ALL
+		  DEPENDS joy
+		  COMMAND joy 42minjoy.lib nonexist.joy || (exit 0))
+# listing
+add_custom_target(demo19.txt ALL
 		  DEPENDS joy
 		  COMMAND joy example.lib example.joy || (exit 0))
 endif()

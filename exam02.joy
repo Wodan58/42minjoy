@@ -1,5 +1,5 @@
 %SET A = + 2 ( * 3 4 )
-%SET A = &2
+%SET A =	&2
 %SET A = -1
 %SET A = 'A'
 

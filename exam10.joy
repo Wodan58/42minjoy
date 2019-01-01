@@ -1,6 +1,6 @@
 %SET A = &2
 
-[ 10 -1 / put 10 putch ]
+[ 10 -1 / put 10 putch getch ]
 
 (* end *)
 .
