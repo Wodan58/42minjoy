@@ -1,6 +1,6 @@
 /*
     module  : joy.c
-    version : 1.8
+    version : 1.9
     date    : 01/05/19
 */
 #include <stdio.h>
@@ -979,7 +979,7 @@ static void wn(FILE *f, memrange n)
 #ifdef READ_LIBRARY_ONCE
     if (m[n].op == unknownident)
 	fprintf(f, "%5ld %-*.*s %10ld %10ld %c", (long)n, identlength,
-	    identlength, (char *)m[n].val, 0, (long)m[n].nxt,
+	    identlength, (char *)m[n].val, 0L, (long)m[n].nxt,
 	    m[n].marked ? 'T' : 'F');
     else
 #endif
