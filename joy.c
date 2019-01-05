@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.6
-    date    : 01/01/19
+    version : 1.7
+    date    : 01/05/19
 */
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <time.h>
 #include <setjmp.h>
+
+#define READ_LIBRARY_ONCE
 
 #if 0
 #define CORRECT_GARBAGE
@@ -893,6 +895,12 @@ static void lookup(void)
 {
     int i, j;
 
+#ifdef READ_LIBRARY_ONCE
+    if (!sentinel) {
+	id = unknownident;
+	return;
+    }
+#endif
     locatn = 0;
     if (sentinel > 0) {	 /* library has been read */
 	strcpy(table[sentinel].alf, ident);
@@ -1061,7 +1069,12 @@ static void readfactor(memrange *where)
 
     case identifier:
 	lookup();
-	*where = kons(id, locatn, 0);
+#ifdef READ_LIBRARY_ONCE
+	if (id == unknownident)
+	    *where = kons(id, (long)strdup(ident), 0);
+	else
+#endif
+	    *where = kons(id, locatn, 0);
 	break;
 
     case charconst:
@@ -1157,12 +1170,47 @@ static void writefactor(memrange n, boolean nl)
 	writeline();
 }  /* writefactor */
 
+#ifdef READ_LIBRARY_ONCE
+static void patchfactor(memrange n);
+
+static void patchterm(memrange n)
+{
+    while (n > 0) {
+	patchfactor(n);
+	n = m[n].nxt;
+    }
+}  /* patchterm */
+
+static void patchfactor(memrange n)
+{   /* was forward */
+    if (n > 0) {
+	switch (m[n].op) {
+
+	case list_:
+	    patchterm(m[n].val);
+	    break;
+
+	case unknownident:
+	    strncpy(ident, (char *)m[n].val, identlength);
+	    ident[identlength] = 0;
+	    free((char *)m[n].val);
+	    lookup();
+	    m[n].op = id;
+	    m[n].val = locatn;
+	    break;
+	}  /* CASE */
+    }
+}  /* patchfactor */
+#endif
+
 static void readlibrary(char *str)
 {
     int loc;
 
+#if 0
     if (writelisting > 5)
 	fprintf(listing, "first pass through library:\n");
+#endif
     newfile(str);
     lastlibloc = 0;
     getsym();
@@ -1180,6 +1228,9 @@ static void readlibrary(char *str)
 	if (lastlibloc == MAXTABLE)	/* R.W. */
 	    point('F', "too many library symbols");
 	strcpy(table[++lastlibloc].alf, ident);
+#ifdef READ_LIBRARY_ONCE
+	loc = lastlibloc;
+#else
 	do
 	    getsym();
 	while (sym != semic && sym != period);
@@ -1204,6 +1255,7 @@ static void readlibrary(char *str)
 	    point('F', "pass 2: identifier expected");
 	lookup();
 	loc = locatn;
+#endif
 	getsym();
 	if (sym != def_equal)
 	    point('F', "pass 2: \"==\" expected");
@@ -1223,15 +1275,18 @@ static void readlibrary(char *str)
 	fprintf(listing, "firstusernode = %ld,  total memory = %ld\n",
 		(long)firstusernode, (long)MAXMEM);
     cc = ll;
+#ifdef READ_LIBRARY_ONCE
+    sentinel = lastlibloc + 1;
+    lasttable = sentinel;
+    for (loc = 1; loc < lasttable; loc++)
+	patchterm(table[loc].adr);
+    adjustment = -1;
+#else
     adjustment = -2;  /* back to file "input" */
+#endif
 }  /* readlibrary */
 
 static jmp_buf JL10;
-
-static void binary(standardident o, long v)
-{
-    s = kons(o, v, m[m[s].nxt].nxt);
-}
 
 static memrange ok(memrange x)
 {
@@ -1245,14 +1300,9 @@ static standardident o(memrange x)
     return m[ok(x)].op;
 }
 
-static boolean b(memrange x)
-{
-    return (boolean)(m[ok(x)].val > 0);
-}
-
 static long i(memrange x)
 {
-    if (m[ok(x)].op == integer_)
+    if (o(x) == integer_)
 	return m[x].val;
     point('R', "integer value required");
     longjmp(JL10, 1);
@@ -1260,7 +1310,7 @@ static long i(memrange x)
 
 static memrange l(memrange x)
 {
-    if (m[ok(x)].op == list_)
+    if (o(x) == list_)
 	return m[x].val;
     point('R', "list value required");
     longjmp(JL10, 1);
@@ -1277,6 +1327,16 @@ static memrange n(memrange x)
 static long v(memrange x)
 {
     return m[ok(x)].val;
+}
+
+static boolean b(memrange x)
+{
+    return (boolean)(v(x) > 0);
+}
+
+static void binary(standardident o, long v)
+{
+    s = kons(o, v, n(n(s)));
 }
 
 static void joy(memrange nod)
@@ -1384,10 +1444,10 @@ static void joy(memrange nod)
 	    break;
 
 	case uncons_:
-	    if (!m[s].val)
+	    if (!v(s))
 		s = kons(list_, 0, kons(nothing_, nothing_, n(s)));
 	    else
-		s = kons(list_, n(l(s)), kons(o(l(s)), m[l(s)].val, n(s)));
+		s = kons(list_, n(l(s)), kons(o(l(s)), v(l(s)), n(s)));
 	    break;
 
 	case select_:
@@ -1410,12 +1470,12 @@ static void joy(memrange nod)
 
 	case put_:
 	    writefactor(s, false);
-	    s = m[s].nxt;
+	    s = n(s);
 	    break;
 
 	case putch_:	/* R.W. */
-	    putch(m[s].val);
-	    s = m[s].nxt;
+	    putch(v(s));
+	    s = n(s);
 	    break;
 
 	case get_:

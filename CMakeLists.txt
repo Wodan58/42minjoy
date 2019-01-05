@@ -99,4 +99,8 @@ add_custom_target(demo19.txt ALL
 add_custom_target(demo20.txt ALL
 		  DEPENDS joy
 		  COMMAND joy exam12.lib exam12.joy || (exit 0))
+# runtime errors
+add_custom_target(demo21.txt ALL
+		  DEPENDS joy
+		  COMMAND joy <exam13.joy || (exit 0))
 endif()
