@@ -1,6 +1,6 @@
 /*
     module  : joy.c
-    version : 1.7
+    version : 1.8
     date    : 01/05/19
 */
 #include <stdio.h>
@@ -149,6 +149,7 @@ static void point_to_symbol(boolean repeatline, FILE *f, char diag, char *mes)
     int i;
     char c;
 
+    LOGFILE(__func__);
     if (repeatline) {
 	fprintf(f, "%*ld%s", linenumwidth, linenumber, linenumsep);
 	for (i = 0; i < ll; i++)
@@ -170,6 +171,7 @@ static void point_to_symbol(boolean repeatline, FILE *f, char diag, char *mes)
 
 static void point(char diag, char *mes)
 {
+    LOGFILE(__func__);
     if (diag != 'I')
 	errorcount++;
     if (includelevel > 0)
@@ -191,6 +193,7 @@ static void point(char diag, char *mes)
 */
 static void iniscanner(void)
 {
+    LOGFILE(__func__);
     start_clock = clock();
     if ((listing = fopen(list_filename, "w")) == NULL) {
 	fprintf(stderr, "%s (not open for writing)\n", list_filename);
@@ -215,6 +218,7 @@ static void iniscanner(void)
 
 static void erw(char *a, symbol symb)
 {
+    LOGFILE(__func__);
     if (++lastresword > maxrestab)
 	point('F', "too many reserved words");
     strncpy(reswords[lastresword].alf, a, reslength);
@@ -224,6 +228,7 @@ static void erw(char *a, symbol symb)
 
 static void est(char *a, standardident symb)
 {
+    LOGFILE(__func__);
     if (++laststdident > maxstdidenttab)
 	point('F', "too many identifiers");
     strncpy(stdidents[laststdident].alf, a, identlength);
@@ -238,6 +243,7 @@ static void newfile(char *a)
     char str[256];
 #endif
 
+    LOGFILE(__func__);
     strncpy(inputs[includelevel].nam, a, identlength);
     inputs[includelevel].nam[identlength] = 0;
     inputs[includelevel].lastlinenumber = linenumber;
@@ -272,6 +278,7 @@ static void perhapslisting(void)
 {
     int i, j;
 
+    LOGFILE(__func__);
     if (writelisting > 0) {
         fprintf(listing, "%*ld", linenumwidth, linenumber);
         for (i = ll - 1; i > 0 && isspace(((int)line[i])); i--)
@@ -291,6 +298,7 @@ static void getch(void)
     int c;
     FILE *f;
 
+    LOGFILE(__func__);
     if (cc == ll) {
 	if (adjustment != 0) {
 	    if (adjustment == -1)
@@ -333,6 +341,7 @@ static long value(void)
     /* this is a  LL(0) parser */
     long result = 0;
 
+    LOGFILE(__func__);
     do
 	getch();
     while (ch <= ' ');
@@ -409,6 +418,7 @@ static void directive(void)
     int i;
     char c, dir[dirlength + 1];
 
+    LOGFILE(__func__);
     getch();
     i = 0;
 #if 0
@@ -492,6 +502,7 @@ static void getsym(void)
     int i, j, k;
     boolean negated;
 
+    LOGFILE(__func__);
 begin:
     while (ch <= ' ')
 	getch();
@@ -697,6 +708,7 @@ einde:  /* R.W. */
 
 static void putch(char c)
 {
+    LOGFILE(__func__);
     putchar(c);
     if (writelisting > 0) {
 	if (!outlinelength)
@@ -711,6 +723,7 @@ static void putch(char c)
 
 static void writeline(void)
 {
+    LOGFILE(__func__);
     putchar('\n');
     if (writelisting > 0)
 	putc('\n', listing);
@@ -721,6 +734,7 @@ static void writeident(char *a)
 {
     int i, length;
 
+    LOGFILE(__func__);
 #if 0
     length = identlength;
     while (a[length - 1] <= ' ')
@@ -751,6 +765,7 @@ static void writeresword(char *a)
 
 static void writenatural(unsigned long n)
 {
+    LOGFILE(__func__);
     if (n >= 10)
 	writenatural(n / 10);
     putch(n % 10 + '0');
@@ -758,6 +773,7 @@ static void writenatural(unsigned long n)
 
 static void writeinteger(long i)
 {
+    LOGFILE(__func__);
     if (outlinelength + 12 > maxoutlinelength)
 	writeline();
     if (i >= 0)
@@ -770,6 +786,7 @@ static void writeinteger(long i)
 
 static void fin(FILE *f)
 {
+    LOGFILE(__func__);
     if (errorcount > 0)
 	fprintf(f, "%ld error(s)\n", errorcount);
     fprintf(f, "%ld milliseconds CPU\n", clock() - start_clock);
@@ -777,6 +794,7 @@ static void fin(FILE *f)
 
 static void finalise(void)
 {
+    LOGFILE(__func__);
     /* finalise */
     fin(stderr);
     if (writelisting > 0)
@@ -788,6 +806,7 @@ static void initialise(void)
 {
     unsigned i;
 
+    LOGFILE(__func__);
     iniscanner();
     strcpy(specials_repeat, "=>");	/* R.W. only: => is necessary */
     erw(".",	period);
@@ -875,6 +894,7 @@ void DumpM(void)
     long i;
     FILE *fp = fopen("joy.dmp", "w");
 
+    LOGFILE(__func__);
     fprintf(fp, "Table\n");
     fprintf(fp, "  nr %-*.*s  adr\n", identlength, identlength, "name");
     for (i = 1; i <= MAXTABLE && table[i].adr; i++)
@@ -895,6 +915,7 @@ static void lookup(void)
 {
     int i, j;
 
+    LOGFILE(__func__);
 #ifdef READ_LIBRARY_ONCE
     if (!sentinel) {
 	id = unknownident;
@@ -954,9 +975,17 @@ static void lookup(void)
 
 static void wn(FILE *f, memrange n)
 {
-    fprintf(f, "%5ld %-*.*s %10ld %10ld %c", (long)n, identlength, identlength,
-	    standardident_NAMES[m[n].op], m[n].val, (long)m[n].nxt,
+    LOGFILE(__func__);
+#ifdef READ_LIBRARY_ONCE
+    if (m[n].op == unknownident)
+	fprintf(f, "%5ld %-*.*s %10ld %10ld %c", (long)n, identlength,
+	    identlength, (char *)m[n].val, 0, (long)m[n].nxt,
 	    m[n].marked ? 'T' : 'F');
+    else
+#endif
+	fprintf(f, "%5ld %-*.*s %10ld %10ld %c", (long)n, identlength,
+	    identlength, standardident_NAMES[m[n].op], m[n].val,
+	    (long)m[n].nxt, m[n].marked ? 'T' : 'F');
     if (m[n].op == lib_)
 	fprintf(f, "   %-*.*s %4ld", identlength, identlength,
 		table[m[n].val].alf, (long)table[m[n].val].adr);
@@ -965,6 +994,7 @@ static void wn(FILE *f, memrange n)
 
 static void writenode(memrange n)
 {
+    LOGFILE(__func__);
     wn(stdout, n);
     if (writelisting > 0) {
 	putc('\t', listing);
@@ -974,6 +1004,7 @@ static void writenode(memrange n)
 
 static void mark(memrange n)
 {
+    LOGFILE(__func__);
     while (n > 0) {
 	if (writelisting > 4)
 	    writenode(n);
@@ -989,6 +1020,7 @@ static memrange kons(standardident o, long v, memrange n)
     memrange i;
     long collected;
 
+    LOGFILE(__func__);
     if (!freelist) {
 	if (!sentinel)		/* R.W. */
 	    goto einde;
@@ -1054,6 +1086,7 @@ static void readfactor(memrange *where)
 {
     memrange here;
 
+    LOGFILE(__func__);
     switch (sym) {
 
     case lbrack:
@@ -1102,6 +1135,7 @@ static void readterm(memrange *first)
     /* was forward */
     memrange i;
 
+    LOGFILE(__func__);
     /* this is LL0 */
     readfactor(first);
     i = *first;
@@ -1118,6 +1152,7 @@ static void writefactor(memrange n, boolean nl);
 
 static void writeterm(memrange n, boolean nl)
 {
+    LOGFILE(__func__);
     while (n > 0) {
 	writefactor(n, false);
 	if (m[n].nxt > 0)
@@ -1130,6 +1165,7 @@ static void writeterm(memrange n, boolean nl)
 
 static void writefactor(memrange n, boolean nl)
 {   /* was forward */
+    LOGFILE(__func__);
     if (n > 0) {
 	switch (m[n].op) {
 
@@ -1161,6 +1197,10 @@ static void writefactor(memrange n, boolean nl)
 	    writeident(table[m[n].val].alf);
 	    break;
 
+	case unknownident:
+	    writeident((char *)m[n].val);
+	    break;
+
 	default:
 	    writeident(stdidents[m[n].val].alf);
 	    break;
@@ -1175,6 +1215,7 @@ static void patchfactor(memrange n);
 
 static void patchterm(memrange n)
 {
+    LOGFILE(__func__);
     while (n > 0) {
 	patchfactor(n);
 	n = m[n].nxt;
@@ -1183,6 +1224,7 @@ static void patchterm(memrange n)
 
 static void patchfactor(memrange n)
 {   /* was forward */
+    LOGFILE(__func__);
     if (n > 0) {
 	switch (m[n].op) {
 
@@ -1207,6 +1249,7 @@ static void readlibrary(char *str)
 {
     int loc;
 
+    LOGFILE(__func__);
 #if 0
     if (writelisting > 5)
 	fprintf(listing, "first pass through library:\n");
@@ -1343,6 +1386,7 @@ static void joy(memrange nod)
 {
     memrange temp1, temp2;
 
+    LOGFILE(__func__);
     while (nod > 0) {  /* WHILE */
 	if (writelisting > 3) {
 	    writeident("joy:");
@@ -1541,6 +1585,7 @@ static void joy(memrange nod)
 
 static void writestatistics(FILE *f)
 {
+    LOGFILE(__func__);
     fprintf(f, "%lu milliseconds CPU to read library\n", stat_lib);
     fprintf(f, "%lu milliseconds CPU to execute\n", clock() - stat_lib
 	- stat_start);	/* R.W. - stat_start */
@@ -1559,6 +1604,7 @@ int main(int argc, char *argv[])
     memrange i;
     int j, k = 1;
 
+    LOGFILE(__func__);
     atexit(perhapsstatistics);
     stat_start = clock();
     initialise();
@@ -1634,6 +1680,7 @@ int main(int argc, char *argv[])
 
 static void perhapsstatistics(void)
 {
+    LOGFILE(__func__);
     if (statistics > 0) {
 	writestatistics(stderr);
 	if (writelisting > 0)
