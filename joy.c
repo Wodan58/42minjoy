@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.9
-    date    : 01/05/19
+    version : 1.10
+    date    : 01/07/19
 */
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +11,7 @@
 #include <setjmp.h>
 
 #define READ_LIBRARY_ONCE
+#define REPLACE_GETCHAR
 
 #if 0
 #define CORRECT_GARBAGE
@@ -295,7 +296,9 @@ static void perhapslisting(void)
 
 static void getch(void)
 {
+#ifndef REPLACE_GETCHAR
     int c;
+#endif
     FILE *f;
 
     LOGFILE(__func__);
@@ -312,24 +315,41 @@ static void getch(void)
 	ll = 0;
 	cc = 0;
 	if (!includelevel) {
+#ifdef REPLACE_GETCHAR
+	    if (fgets(line, maxlinelength, stdin)) {
+		ll = strlen(line);
+		perhapslisting();
+	    }
+#else
 	    while ((c = getchar()) != EOF && c != '\n')
 		if (ll < maxlinelength && c != '\r')
 		    line[ll++] = c;
 	    if (c == EOF)
 		point('F', "unexpected end of file");
 	    perhapslisting();
+#endif
 	} else {
 	    f = inputs[includelevel - 1].fil;
+#ifdef REPLACE_GETCHAR
+	    if (fgets(line, maxlinelength, f)) {
+		ll = strlen(line);
+		perhapslisting();
+	    } else {
+#else
 	    while ((c = getc(f)) != EOF && c != '\n')
 		if (ll < maxlinelength && c != '\r')
 		    line[ll++] = c;
 	    if (c == EOF) {
 		c = 0;		/* R.W. */
+#endif
 		fclose(f);
 		inputs[includelevel - 1].fil = NULL;
 		adjustment = -1;
-	    } else
+	    }
+#ifndef REPLACE_GETCHAR
+	      else
 		perhapslisting();
+#endif
 	}
 	line[ll++] = ' ';	/* R.W. */
     }  /* IF */
@@ -956,15 +976,19 @@ static void lookup(void)
 	    if (i - 1 > j)
 		id = stdidents[locatn].symb;
 	    else {
+#ifndef READ_LIBRARY_ONCE
 		if (!sentinel)
 		    id = unknownident;
 		else {
+#endif
 		    if (lasttable == MAXTABLE)	/* R.W. */
 			point('F', "too many library symbols");
 		    strcpy(table[++lasttable].alf, ident);
 		    table[locatn = lasttable].adr = 0;
 		    id = lib_;
+#ifndef READ_LIBRARY_ONCE
 		}
+#endif
 	    }
 	}  /* ELSE */
     }  /* ELSE */
