@@ -11,6 +11,6 @@ Changes
 -------
 
 Adding a new builtin, e.g. getch or putch, requires modification of the program
-in 4 locations: standardident, initialise, standardident_NAMES, and joy.
+in 4 locations: standardident{}, initialise(), standardident_NAMES[], and joy().
 Reading the library files twice is not needed, given the nature of the language
 and therefore some code has been added in order to remove that feature.
