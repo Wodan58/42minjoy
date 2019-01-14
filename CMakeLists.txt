@@ -11,7 +11,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 --coverage -fprofile-arcs -ftest-cove
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage") # enabling coverage
 endif()
 add_executable(joy joy.c)
-add_subdirectory(test)
 add_custom_target(demo01.txt ALL
                   DEPENDS joy
                   COMMAND joy <tutorial.joy >demo01.txt)
