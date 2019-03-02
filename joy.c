@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.10
-    date    : 01/07/19
+    version : 1.11
+    date    : 03/02/19
 */
 #include <stdio.h>
 #include <string.h>
@@ -10,12 +10,8 @@
 #include <time.h>
 #include <setjmp.h>
 
-#define READ_LIBRARY_ONCE
-#define REPLACE_GETCHAR
-
-#if 0
 #define CORRECT_GARBAGE
-#endif
+#define READ_LIBRARY_ONCE
 
 #ifdef DEBUG
 int debug = 1;
@@ -198,7 +194,7 @@ static void iniscanner(void)
     start_clock = clock();
     if ((listing = fopen(list_filename, "w")) == NULL) {
 	fprintf(stderr, "%s (not open for writing)\n", list_filename);
-	exit(1);
+	exit(0);
     }
     writelisting = 0;
     ch = ' ';
@@ -263,7 +259,7 @@ static void newfile(char *a)
 	fclose(inputs[includelevel].fil);
     if ((inputs[includelevel].fil = fopen(a, "r")) == NULL) {
 	fprintf(stderr, "%s (not open for reading)\n", a);
-	exit(1);
+	exit(0);
     }
     adjustment = 1;
 }  /* newfile */
@@ -296,7 +292,7 @@ static void perhapslisting(void)
 
 static void getch(void)
 {
-#ifndef REPLACE_GETCHAR
+#if 0
     int c;
 #endif
     FILE *f;
@@ -315,7 +311,7 @@ static void getch(void)
 	ll = 0;
 	cc = 0;
 	if (!includelevel) {
-#ifdef REPLACE_GETCHAR
+#if 1
 	    if (fgets(line, maxlinelength, stdin)) {
 		ll = strlen(line);
 		perhapslisting();
@@ -330,7 +326,7 @@ static void getch(void)
 #endif
 	} else {
 	    f = inputs[includelevel - 1].fil;
-#ifdef REPLACE_GETCHAR
+#if 1
 	    if (fgets(line, maxlinelength, f)) {
 		ll = strlen(line);
 		perhapslisting();
@@ -346,7 +342,7 @@ static void getch(void)
 		inputs[includelevel - 1].fil = NULL;
 		adjustment = -1;
 	    }
-#ifndef REPLACE_GETCHAR
+#if 0
 	      else
 		perhapslisting();
 #endif
@@ -1668,7 +1664,7 @@ int main(int argc, char *argv[])
     if (argc > 1)	/* R.W. */
 	if (!freopen(argv[k], "r", stdin)) {
 	    fprintf(stderr, "%s (not open for reading)\n", argv[k]);
-	    exit(1);
+	    exit(0);
 	}
     setjmp(JL10);
     do {
