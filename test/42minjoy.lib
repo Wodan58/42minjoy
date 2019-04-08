@@ -1,0 +1,187 @@
+%IF  = P 0  %SET  P = 1
+%IF  = P 1  %PUT First pass through library:
+%IF  = P 2  %PUT Second pass through library:
+
+								(*
+I1 I2	*		==  I3		where I3 = (I1 * I2)	 *
+I1 I2	+		==  I3		where I3 = (I1 + I2)	 *
+I1 I2	-		==  I3		where I3 = (I1 - I2)	 *
+I1 I2	/		==  I3		where I3 = (I1 / I2)	 *
+I1 I2	<		==  B		where B	 = (I1 < I2)	 *
+								 *)
+	<=		==  succ <				 ;
+	<>		==  = not				 ;
+								(*
+I1 I2	=		==  B		where B	 =  (I1 = I2)	 *
+								 *)
+	>		==  swap <				 ;
+	>=		==  pred >				 ;
+								(*
+	addlist		==  [+] zip				 ;
+								(*
+B1 B2	and		==  B3		where B3 = (B1 and B2)	 *
+								 *)
+	b		==  [i] dip i				 ;
+	boolean		==  true sametype			 ;
+	branch		==  swap pair index i			 ;
+	c		==  [swap] dip i			 ;
+	car		==  uncons pop				 ;
+	cdr		==  uncons swap pop			 ;
+	clearstack	==  [] unstack				 ;
+	clearstack1	==  [clearstack] dip			 ;
+	cnos		==  swap cons				 ;
+	concat		==  [reverse] c shunt			 ;
+								(*
+X [Xs]	cons		==  [X Xs]				 *
+nothing [Xs] cons	==  [Xs]				 *
+								 *)
+	construct0	==  [dip swap] map			 ;
+	construct1	==  [[dip swap] map] unary		 ;
+	construct2	==  [[nullary] cons dip swap] map	 ;
+	contains	==  false swap [ = or ] cons fold	 ;
+	cube		==  dup dup * *				 ;
+	definition	==  first body				 ;
+								(*
+X [Fs]	dip		==  Fs X				 *
+								 *)
+	dip2		==  [pair] dip dip unpair		 ;
+	duco		==  dup cons				 ;
+								(*
+X	dup		==  X X					 *
+								 *)
+	dureco		==  dup rest cons			 ;
+	exp		==  dup 0 =
+			    [pop pop 1] [[dup] dip 1 - exp *]
+			    branch ;
+	factorial_rec	==  dup 1 <=
+			    [ pop 1 ] [ dup pred factorial_rec * ]
+			    branch				 ;
+(*
+	filter		==  [test] cons [] [cons] stepl		 ;
+*)
+	first		==  uncons pop				 ;
+	fix		==  [duco] first swap cons duco		 ;
+	fold		==  [swap] dip step			 ;
+	foldl		==  [] rollup stepl			 ;
+	foldr		==  [] rollup stepr			 ;
+	hidefirst	==  dip					 ;
+	hidesecond	==  [swap] dip dip swap			 ;
+								(*
+[Fs]	i		==  Fs					 *
+								 *)
+	id		==  [] pop				 ;
+	infra		==  [infra1] unary			 ;
+	infra1		==  [unstack] dip i solostack		 ;
+	integer		==  0 sametype				 ;
+
+%INCLUDE 42minjoy.joy
+
+	k		==  [pop] dip i				 ;
+	last		==  dup rest null
+			    [first] [rest last] branch		 ;
+	length		==  0 [pop 1 +] fold			 ;
+	lengthold	==  0 swap [pop 1 +] step		 ;
+	list		==  [] sametype				 ;
+	map		==  maprev reverse			 ;
+	maprev		==  [] rollup shuntmap			 ;
+	member		==  swap contains			 ;
+	mm		==  [pair] dip map unpair		 ;
+	mullists	==  [*] zip				 ;
+	newline		==  '\10  put                            ;
+        nil             ==  []                                   ;
+                                                                (*
+B1      not             ==  B2          where B2 = not B1        *
+                                                                 *)
+        null            ==  car nothing sametype                 ;
+        nullary         ==  stack swap dip rest cons unstack     ;
+                                                                (*
+B1 B2   or              ==  B3          where B3 = (B1 or B2)    *
+                                                                 *)
+        pair            ==  [] cons cons                         ;
+        pairlists       ==  [pair] zip                           ;
+        partition       ==  [[][]] dip
+                            dup
+                            [ first >
+                              [cnos]
+                              [swap [cnos] dip]
+                              branch ]
+                            cons
+                            [dup] first cnos
+                            step                                 ;
+        partition1      ==  [[][]] dip
+                            dup first
+                            [ first >
+                              [cnos]
+                              [swap [cnos] dip]
+                              branch ]
+                            cons
+                            [first] first cnos
+                            [dup] first cnos
+                            step                                 ;
+                                                                (*
+X       pop             ==                                       *
+                                                                 *)
+        pred            ==  1 -                                  ;
+        product         ==  1 [*] fold                           ;
+        putln           ==  put newline                          ;
+        putsp           ==  put space put                        ;
+                                                                (*
+        quicksort       :   IF the list has only 0 or 1 member
+                                THEN leave it as it is
+                                ELSE partition into two,
+                                     quicksort both,
+                                     concatenate them
+                                                                *)
+        quicksort       ==  dup small
+                            []
+                            [ partition
+                              quicksort [quicksort] dip
+                              concat ]
+                            branch                               ;
+        quicksort1      ==  dup small
+                            []
+                            [ partition1
+                              quicksort1 [quicksort1] dip
+                              concat ]
+                            branch                               ;
+        rest            ==  uncons swap pop                      ;
+        reverse         ==  [] swap shunt                        ;
+        rmap            ==  [] swap [[swap cons] b] cons fold    ;
+        rolldown        ==  [swap] dip swap                      ;
+        rollup          ==  swap [swap] dip                      ;
+        second          ==  rest first                           ;
+
+%INCLUDE 42minjoy.ses
+
+        shunt           ==   [cnos] step                         ;
+        shuntmap        ==   [[cnos] b] cons step                ;
+        small           ==  uncons null swap pop                 ;
+        solostack       ==  stack [clearstack] dip               ;
+        space           ==  '\32	(* one space *)		 ;
+	square		==  dup *				 ;
+	succ		==  1 +					 ;
+	sum		==  0 [+] fold				 ;
+	sumuntried	==  [] 0 [+] foldl			 ;
+								(*
+X Y	swap		==  Y X					 *
+								 *)
+	thrice		==  dup [twice] dip i			 ;
+	times		==  dup 0 =
+			    [pop pop]
+			    [[dup [i] dip] dip pred times] branch;
+	twice		==  dup b				 ;
+	unary		==  nullary [pop] dip			 ;
+								(*
+[X Xs]	uncons		==  X [Xs]				 *
+[]	uncons		==  nothing []				 *
+								 *)
+	unit		==  [] cons				 ;
+	unpair		==  uncons uncons pop			 ;
+	w		==  [dup] dip i				 ;
+	x		==  dup i				 ;
+	y		==  fix i				 ;
+	zzz		==  zzz
+
+%IF  = P 2  %PUT GO !
+%SET  P = 2
+.
