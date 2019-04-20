@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.11
-    date    : 03/02/19
+    version : 1.12
+    date    : 04/20/19
 */
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <time.h>
 #include <setjmp.h>
+
+#ifdef _MSC_VER
+#pragma warning(disable : 4244 4996 )
+#endif
 
 #define CORRECT_GARBAGE
 #define READ_LIBRARY_ONCE
