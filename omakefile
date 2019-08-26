@@ -2,7 +2,7 @@
 #  Makefile for 42minjoy
 #
 CC = gcc
-CFLAGS = -Os -s
+CFLAGS = -O3 -Wall -Wextra -Werror
 
 demo.txt: joy 42minjoy.lib tutorial.joy
 	./joy <tutorial.joy >$@

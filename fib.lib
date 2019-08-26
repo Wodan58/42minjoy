@@ -1,1 +1,2 @@
+(* Fibonacci *)
 fib == dup 2 < [[1 - dup fib swap 1 - fib +] []] index i.
