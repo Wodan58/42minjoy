@@ -12,11 +12,29 @@ Changes
 
 Adding a new builtin, e.g. getch or putch, requires modification of the program
 in 4 locations: standardident{}, initialise(), standardident_NAMES[], and joy().
+After translating from Pascal to C with the help of
+[p2c](https://github.com/FranklinChen/p2c) some corrections were done, marked with R.W.
 Reading the library files twice is not needed, given the nature of the language
-and therefore some code has been added in order to remove that feature.
+and that is why some code has been added, removing that feature.
 
 Installation
 ------------
 
     cmake .
     cmake --build .
+
+Debugging
+---------
+
+Although this software contains no bugs, steps have been taken that make debugging easier.
+For a start, gdb requires that input comes from a file, so a typical session will be:
+
+    gdb joy
+    ...
+    run 42minjoy.lib tutorial.joy
+    ...
+    quit
+
+If the program crashes gdb sometimes answers to the command `bt` with: No stack.
+In that case, it might be beneficial that it is also possible to compile with -DDEBUG
+and get a trace of program execution in joy.log.
