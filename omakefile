@@ -1,14 +1,24 @@
 #
-#  Makefile for 42minjoy
+#   Makefile for 42minjoy
 #
+.POSIX:
+.SUFFIXES:
+
 CC = gcc
 CFLAGS = -O3 -Wall -Wextra -Werror
+LDLIBS = -static
+OBJECTS = joy.o
 
 demo.txt: joy 42minjoy.lib tutorial.joy
-	./joy <tutorial.joy >$@
+	./joy 42minjoy.lib tutorial.joy >$@
 
-joy: joy.c
-	$(CC) $(CFLAGS) -o$@ $<
+joy: $(OBJECTS)
+	$(CC) -o$@ $(OBJECTS) $(LDLIBS)
 
 clean:
-	rm -f joy 42minjoy.lst demo.txt
+	rm -f joy *.o 42minjoy.lst demo.txt
+
+.SUFFIXES: .c .o
+
+.c.o:
+	$(CC) $(CFLAGS) -c $<

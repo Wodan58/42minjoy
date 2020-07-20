@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.12
-    date    : 04/20/19
+    version : 1.12.1.2
+    date    : 07/18/20
 */
 #include <stdio.h>
 #include <string.h>
@@ -32,7 +32,7 @@ typedef unsigned char boolean;
 #define false 0
 
 #define errormark	"%JOY"
-#define lib_filename	"42minjoy.lib"		/* R.W. */
+#define lib_filename	"42minjoy.lib"
 #define list_filename	"42minjoy.lst"
 
 #define reslength	8
@@ -79,17 +79,18 @@ typedef enum {
 
 #define initial_alternative_radix  2
 
+#if 0
 #define maxchartab	  1000
 #define maxstringtab	  100
-#if 0
 #define maxnodtab	  1000
 #endif
 
-typedef char identalfa[identlength + 1];	/* R.W. +1 */
+typedef char identalfa[identlength + 1];
 typedef char resalfa[reslength + 1];
-typedef char message[messagelength + 1];
 
 #if 0
+typedef char message[messagelength + 1];
+
 typedef struct toops {
     long symbols, types, strings, chars;
 } toops;
@@ -141,7 +142,7 @@ static toops toop;
 #endif
 
 static long errorcount, outlinelength, statistics;
-static clock_t start_clock;
+static clock_t start_clock, end_clock;
 
 /* - - - - -   MODULE ERROR    - - - - - */
 
@@ -195,7 +196,6 @@ static void point(char diag, char *mes)
 static void iniscanner(void)
 {
     LOGFILE(__func__);
-    start_clock = clock();
     if ((listing = fopen(list_filename, "w")) == NULL) {
 	fprintf(stderr, "%s (not open for writing)\n", list_filename);
 	exit(0);
@@ -284,13 +284,14 @@ static void perhapslisting(void)
         fprintf(listing, "%*ld", linenumwidth, linenumber);
         for (i = ll - 1; i > 0 && isspace(((int)line[i])); i--)
             ;
-        if ((j = i + 1) != 0)	/* R.W. */
+        if (line[j = i + 1] != 0) {
             fprintf(listing, "%s", linenumsep);
-	for (i = 0; i < j; i++)
-	    putc(line[i], listing);
+	    for (i = 0; i < j; i++)
+		putc(line[i], listing);
+	}
 	putc('\n', listing);
 	must_repeat_line = false;
-	fflush(listing);	/* R.W. */
+	fflush(listing);
     }
 }
 
@@ -340,7 +341,7 @@ static void getch(void)
 		if (ll < maxlinelength && c != '\r')
 		    line[ll++] = c;
 	    if (c == EOF) {
-		c = 0;		/* R.W. */
+		c = 0;
 #endif
 		fclose(f);
 		inputs[includelevel - 1].fil = NULL;
@@ -351,7 +352,7 @@ static void getch(void)
 		perhapslisting();
 #endif
 	}
-	line[ll++] = ' ';	/* R.W. */
+	line[ll++] = ' ';
     }  /* IF */
     ch = line[cc++];
 }  /* getch */
@@ -373,7 +374,7 @@ static long value(void)
     if (isupper(ch)) {
 	result = scantimevariables[ch - 'A'];
 #if 0
-	getsym();	/* R.W. */
+	getsym();
 #endif
 	goto einde;
     }
@@ -435,7 +436,7 @@ einde:
 
 static void directive(void)
 {
-    int i;
+    int i, j;
     char c, dir[dirlength + 1];
 
     LOGFILE(__func__);
@@ -472,10 +473,12 @@ static void directive(void)
 	newfile(ident);
     }
     else if (!strcmp(dir, "PUT")) {
-	for (i = cc - 1; i < ll; i++)
+        for (i = ll - 1; i > 0 && isspace(((int)line[i])); i--)
+            ;
+	for (j = i + 1, i = cc - 1; i < j; i++)
 	    fputc(line[i], stderr);
-	cc = ll;
 	fputc('\n', stderr);
+	cc = ll;
     }
     else if (!strcmp(dir, "SET")) {
 	while (ch <= ' ')
@@ -594,7 +597,7 @@ begin:
 	    negated = false;
 	else {
 	    getch();
-	    if (!isdigit(ch)) {		/* R.W. */
+	    if (!isdigit(ch)) {	
 #if 0
 		strncpy(res, emptyres, reslength);
 		strncpy(ident, emptyident, identlength);
@@ -602,7 +605,7 @@ begin:
 		res[i = 0] = '-';
 		ident[i++] = '-';
 		ident[i] = res[i] = 0;
-		/* sym = hyphen; */	/* R.W. */
+		/* sym = hyphen; */
 		goto einde;
 	    }
 	    negated = true;
@@ -680,7 +683,7 @@ begin:
 	strncpy(res, emptyres, reslength);
 	strncpy(ident, emptyident, identlength);
 #endif
-einde:  /* R.W. */
+einde:
 	if (isupper(ch))
 	    do {
 		if (i < reslength) {
@@ -694,7 +697,7 @@ einde:  /* R.W. */
 		getch();
 		i++;
 	    } while (ch == '_' || isalnum(ch));
-	else if (!isspace(ch))		/* R.W. */
+	else if (!isspace(ch))
 	    do {
 		if (i < reslength) {
 		    res[i] = ch;
@@ -809,7 +812,8 @@ static void fin(FILE *f)
     LOGFILE(__func__);
     if (errorcount > 0)
 	fprintf(f, "%ld error(s)\n", errorcount);
-    fprintf(f, "%ld milliseconds CPU\n", clock() - start_clock);
+    end_clock = clock() - start_clock;
+    fprintf(f, "%ld microseconds CPU\n", end_clock);
 }
 
 static void finalise(void)
@@ -828,7 +832,7 @@ static void initialise(void)
 
     LOGFILE(__func__);
     iniscanner();
-    strcpy(specials_repeat, "=>");	/* R.W. only: => is necessary */
+    strcpy(specials_repeat, "=>");
     erw(".",	period);
     erw(";",	semic);
     erw("==",	def_equal);
@@ -886,7 +890,7 @@ typedef struct _REC_table {
 typedef struct _REC_m {
     long val;
     memrange nxt;
-    unsigned char op;	/* R.W. was: standardident */
+    unsigned char op;
     boolean marked;
 } _REC_m;
 
@@ -899,7 +903,7 @@ static memrange s,  /* stack */
 
 static standardident last_op_executed;
 static long stat_kons, stat_gc, stat_ops, stat_calls;
-static clock_t stat_start, stat_lib;
+static clock_t stat_lib;
 
 static char *standardident_NAMES[] = {
     "LIB", "*", "+", "-", "/", "<", "=", "and", "body", "cons", "dip", "dup",
@@ -981,7 +985,7 @@ static void lookup(void)
 		    id = unknownident;
 		else {
 #endif
-		    if (lasttable == MAXTABLE)	/* R.W. */
+		    if (lasttable == MAXTABLE)
 			point('F', "too many library symbols");
 		    strcpy(table[++lasttable].alf, ident);
 		    table[locatn = lasttable].adr = 0;
@@ -1046,7 +1050,7 @@ static memrange kons(standardident o, long v, memrange n)
 
     LOGFILE(__func__);
     if (!freelist) {
-	if (!sentinel)		/* R.W. */
+	if (!sentinel)
 	    goto einde;
 #if 0
 	fprintf(stderr, "gc, last_op_executed = %-*.*s\n", identlength,
@@ -1085,7 +1089,7 @@ static memrange kons(standardident o, long v, memrange n)
 	    writeline();
 	}
 	if (!freelist)
-einde:	/* R.W. */
+einde:
 	    point('F', "dynamic memory exhausted");
 	stat_gc++;
     }
@@ -1103,6 +1107,17 @@ einde:	/* R.W. */
     stat_kons++;
     return i;
 }  /* kons */
+
+static char *my_strdup(char* str)
+{
+    char *ptr;
+    size_t leng;
+
+    leng = strlen(str);
+    if ((ptr = malloc(leng + 1)) != 0)
+        strcpy(ptr, str);
+    return ptr;
+}
 
 static void readterm(memrange *);
 
@@ -1128,7 +1143,7 @@ static void readfactor(memrange *where)
 	lookup();
 #ifdef READ_LIBRARY_ONCE
 	if (id == unknownident)
-	    *where = kons(id, (long)strdup(ident), 0);
+	    *where = kons(id, (long)my_strdup(ident), 0);
 	else
 #endif
 	    *where = kons(id, locatn, 0);
@@ -1292,7 +1307,7 @@ static void readlibrary(char *str)
 	if (lastlibloc > 0)
 	    if (strcmp(ident, table[lastlibloc].alf) <= 0)
 		point('F', "bad order in library");
-	if (lastlibloc == MAXTABLE)	/* R.W. */
+	if (lastlibloc == MAXTABLE)
 	    point('F', "too many library symbols");
 	strcpy(table[++lastlibloc].alf, ident);
 #ifdef READ_LIBRARY_ONCE
@@ -1541,7 +1556,7 @@ static void joy(memrange nod)
 	    s = n(s);
 	    break;
 
-	case putch_:	/* R.W. */
+	case putch_:
 	    putch(v(s));
 	    s = n(s);
 	    break;
@@ -1552,7 +1567,7 @@ static void joy(memrange nod)
 	    s = kons(o(temp1), v(temp1), s);
 	    break;
 
-	case getch_:	/* R.W. */
+	case getch_:
 	    getch();
 	    s = kons(integer_, ch, s);
 	    break;
@@ -1560,13 +1575,13 @@ static void joy(memrange nod)
 	/* COMBINATORS: */
 	case i_:
 #ifdef CORRECT_GARBAGE
-	    dump = kons(o(s), l(s), dump);	/* R.W. */
+	    dump = kons(o(s), l(s), dump);
 #endif
 	    temp1 = s;
 	    s = n(s);
 	    joy(l(temp1));
 #ifdef CORRECT_GARBAGE
-	    dump = n(dump);	/* R.W. */
+	    dump = n(dump);
 #endif
 	    break;
 
@@ -1610,11 +1625,9 @@ static void joy(memrange nod)
 static void writestatistics(FILE *f)
 {
     LOGFILE(__func__);
-    fprintf(f, "%lu milliseconds CPU to read library\n", stat_lib);
-    fprintf(f, "%lu milliseconds CPU to execute\n", clock() - stat_lib
-	- stat_start);	/* R.W. - stat_start */
+    fprintf(f, "%lu microseconds CPU to read library\n", stat_lib);
+    fprintf(f, "%lu microseconds CPU to execute\n", end_clock - stat_lib);
     fprintf(f, "%lu user nodes available\n", MAXMEM - firstusernode + 1L);
-	/* R.W. + 1 */
     fprintf(f, "%lu garbage collections\n", stat_gc);
     fprintf(f, "%lu nodes used\n", stat_kons);
     fprintf(f, "%lu calls to joy interpreter\n", stat_calls);
@@ -1629,8 +1642,8 @@ int main(int argc, char *argv[])
     int j, k = 1;
 
     LOGFILE(__func__);
+    start_clock = clock();
     atexit(perhapsstatistics);
-    stat_start = clock();
     initialise();
     for (i = 1; i <= MAXMEM; i++) {
 	m[i].marked = false;
@@ -1644,14 +1657,14 @@ int main(int argc, char *argv[])
     stat_ops = 0;
     stat_calls = 0;
     sentinel = 0;
-    firstusernode = 0;		/* R.W. */
+    firstusernode = 0;
     if (argc == 1)
 	readlibrary(lib_filename);
     else {
 	argc--;
 	readlibrary(argv[k++]);
     }
-    stat_lib = clock() - stat_start;
+    stat_lib = clock() - start_clock;
     if (writelisting > 2)
 	for (j = 1; j <= lastlibloc; j++) {
 	    fprintf(listing, "\"%-*.*s\" :\n", identlength, identlength,
@@ -1665,11 +1678,8 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
     DumpM();
 #endif
-    if (argc > 1)	/* R.W. */
-	if (!freopen(argv[k], "r", stdin)) {
-	    fprintf(stderr, "%s (not open for reading)\n", argv[k]);
-	    exit(0);
-	}
+    if (argc > 1)
+	newfile(argv[k]);
     setjmp(JL10);
     do {
 	getsym();
@@ -1689,7 +1699,7 @@ int main(int argc, char *argv[])
 	    }
 	    outlinelength = 0;
 	    joy(m[programme].val);
-	    if (writelisting > 0 && outlinelength > 0)
+	    if (outlinelength > 0)
 		writeline();
 	    if (writelisting > 2) {
 		writeident("stack:");
