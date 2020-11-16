@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.12.1.2
-    date    : 07/18/20
+    version : 1.12.1.3
+    date    : 07/24/20
 */
 #include <stdio.h>
 #include <string.h>
@@ -122,10 +122,9 @@ static long scantimevariables['Z' + 1 - 'A'];
 static long alternative_radix, linenumber;
 static char line[maxlinelength + 1];
 static int cc, ll;
-static int ch;
+static int my_ch;
 static identalfa ident;
 static standardident id;
-static resalfa res;
 static char specials_repeat[maxrestab + 1];
 static symbol sym;
 static long num;
@@ -201,7 +200,7 @@ static void iniscanner(void)
 	exit(0);
     }
     writelisting = 0;
-    ch = ' ';
+    my_ch = ' ';
     linenumber = 0;
     cc = 1;
     ll = 1;		    /* to enable fatal message during initialisation */
@@ -282,7 +281,7 @@ static void perhapslisting(void)
     LOGFILE(__func__);
     if (writelisting > 0) {
         fprintf(listing, "%*ld", linenumwidth, linenumber);
-        for (i = ll - 1; i > 0 && isspace(((int)line[i])); i--)
+        for (i = ll - 1; i > 0 && line[i] <= ' '; i--)
             ;
         if (line[j = i + 1] != 0) {
             fprintf(listing, "%s", linenumsep);
@@ -354,7 +353,7 @@ static void getch(void)
 	}
 	line[ll++] = ' ';
     }  /* IF */
-    ch = line[cc++];
+    my_ch = line[cc++];
 }  /* getch */
 
 static long value(void)
@@ -365,30 +364,30 @@ static long value(void)
     LOGFILE(__func__);
     do
 	getch();
-    while (ch <= ' ');
-    if (ch == '\'' || ch == '&' || isdigit(ch)) {
+    while (my_ch <= ' ');
+    if (my_ch == '\'' || my_ch == '&' || isdigit(my_ch)) {
 	getsym();
 	result = num;
 	goto einde;
     }
-    if (isupper(ch)) {
-	result = scantimevariables[ch - 'A'];
+    if (isupper(my_ch)) {
+	result = scantimevariables[my_ch - 'A'];
 #if 0
 	getsym();
 #endif
 	goto einde;
     }
-    if (ch == '(') {
+    if (my_ch == '(') {
 	result = value();
-	while (ch <= ' ')
+	while (my_ch <= ' ')
 	    getch();
-	if (ch == ')')
+	if (my_ch == ')')
 	    getch();
 	else
 	    point('E', "right parenthesis expected");
 	goto einde;
     }
-    switch (ch) {
+    switch (my_ch) {
 
     case '+':
 	result = value() + value();
@@ -447,9 +446,9 @@ static void directive(void)
 #endif
     do {
 	if (i < dirlength)
-	    dir[i++] = ch;
+	    dir[i++] = my_ch;
 	getch();
-    } while (ch == '_' || isupper(ch));
+    } while (my_ch == '_' || isupper(my_ch));
     dir[i] = 0;
     if (!strcmp(dir, "IF")) {
 	if (value() < 1)
@@ -458,7 +457,7 @@ static void directive(void)
     else if (!strcmp(dir, "INCLUDE")) {
 	if (includelevel == maxincludelevel)
 	    point('F', "too many include files");
-	while (ch <= ' ')
+	while (my_ch <= ' ')
 	    getch();
 	i = 0;
 #if 0
@@ -466,14 +465,14 @@ static void directive(void)
 #endif
 	do {
 	    if (i < identlength)
-		ident[i++] = ch;
+		ident[i++] = my_ch;
 	    getch();
-	} while (ch > ' ');
+	} while (my_ch > ' ');
 	ident[i] = 0;
 	newfile(ident);
     }
     else if (!strcmp(dir, "PUT")) {
-        for (i = ll - 1; i > 0 && isspace(((int)line[i])); i--)
+        for (i = ll - 1; i > 0 && line[i] <= ' '; i--)
             ;
 	for (j = i + 1, i = cc - 1; i < j; i++)
 	    fputc(line[i], stderr);
@@ -481,15 +480,15 @@ static void directive(void)
 	cc = ll;
     }
     else if (!strcmp(dir, "SET")) {
-	while (ch <= ' ')
+	while (my_ch <= ' ')
 	    getch();
-	if (!isupper(ch))
+	if (!isupper(my_ch))
 	    point('E', "\"A\" .. \"Z\" expected");
-	c = ch;
+	c = my_ch;
 	getch();
-	while (ch <= ' ')
+	while (my_ch <= ' ')
 	    getch();
-	if (ch != '=')
+	if (my_ch != '=')
 	    point('E', "\"=\" expected");
 	scantimevariables[c - 'A'] = value();
     }
@@ -527,19 +526,20 @@ static void getsym(void)
 
     LOGFILE(__func__);
 begin:
-    while (ch <= ' ')
+    ident[i = 0] = 0;
+    while (my_ch <= ' ')
 	getch();
-    switch (ch) {
+    switch (my_ch) {
 
     case '\'':
 	getch();
-	if (ch == '\\')
+	if (my_ch == '\\')
 	    num = value();
 	else {
-	    num = ch;
+	    num = my_ch;
 	    getch();
 	}
-	if (ch == '\'')
+	if (my_ch == '\'')
 	    getch();
 	sym = charconst;
 	break;
@@ -569,13 +569,13 @@ begin:
 
     case '(':
 	getch();
-	if (ch == '*') {
+	if (my_ch == '*') {
 	    getch();
 	    do {
-		while (ch != '*')
+		while (my_ch != '*')
 		    getch();
 		getch();
-	    } while (ch != ')');
+	    } while (my_ch != ')');
 	    getch();
 	    goto begin;
 	}
@@ -593,18 +593,17 @@ begin:
     case '7':
     case '8':
     case '9':
-	if (ch != '-')
+	if (my_ch != '-')
 	    negated = false;
 	else {
 	    getch();
-	    if (!isdigit(ch)) {	
+	    if (!isdigit(my_ch)) {	
 #if 0
 		strncpy(res, emptyres, reslength);
 		strncpy(ident, emptyident, identlength);
 #endif
-		res[i = 0] = '-';
 		ident[i++] = '-';
-		ident[i] = res[i] = 0;
+		ident[i] = 0;
 		/* sym = hyphen; */
 		goto einde;
 	    }
@@ -613,9 +612,9 @@ begin:
 	sym = numberconst;
 	num = 0;
 	do {
-	    num = num * 10 + ch - '0';
+	    num = num * 10 + my_ch - '0';
 	    getch();
-	} while (isdigit(ch));
+	} while (isdigit(my_ch));
 	if (negated)
 	    num = -num;
 	break;
@@ -624,12 +623,12 @@ begin:
 	sym = numberconst;
 	num = 0;
 	getch();
-	while (isupper(ch) || isdigit(ch)) {
-	    if (isupper(ch))
-		ch += '9' - 'A' + 1;
-	    if (ch >= alternative_radix + '0')
+	while (isdigit(my_ch) || isupper(my_ch)) {
+	    if (my_ch >= 'A' && my_ch <= 'Z')
+		my_ch += '9' - 'A' + 1;
+	    if (my_ch >= alternative_radix + '0')
 		point('E', "exceeding alternative radix");
-	    num = alternative_radix * num + ch - '0';
+	    num = alternative_radix * num + my_ch - '0';
 	    getch();
 	}
 	break;
@@ -661,15 +660,14 @@ begin:
     case 'y':
     case 'z':
 	sym = identifier;
-	i = 0;
 #if 0
 	strncpy(ident, emptyident, identlength);
 #endif
 	do {
 	    if (i < identlength)
-		ident[i++] = ch;
+		ident[i++] = my_ch;
 	    getch();
-	} while (ch == '_' || isalnum(ch));
+	} while (my_ch == '_' || isalnum(my_ch));
 	ident[i] = 0;
 	break;
 
@@ -678,45 +676,34 @@ begin:
 	goto begin;
 
     default:
-	i = 0;
 #if 0
 	strncpy(res, emptyres, reslength);
 	strncpy(ident, emptyident, identlength);
 #endif
 einde:
-	if (isupper(ch))
+	if (isupper(my_ch))
 	    do {
-		if (i < reslength) {
-		    res[i] = ch;
-		    res[i + 1] = 0;
-		}
 		if (i < identlength) {
-		    ident[i] = ch;
-		    ident[i + 1] = 0;
+		    ident[i++] = my_ch;
+		    ident[i] = 0;
 		}
 		getch();
-		i++;
-	    } while (ch == '_' || isalnum(ch));
-	else if (!isspace(ch))
+	    } while (my_ch == '_' || isalnum(my_ch));
+	else if (my_ch > ' ')
 	    do {
-		if (i < reslength) {
-		    res[i] = ch;
-		    res[i + 1] = 0;
-		}
 		if (i < identlength) {
-		    ident[i] = ch;
-		    ident[i + 1] = 0;
+		    ident[i++] = my_ch;
+		    ident[i] = 0;
 		}
 		getch();
-		i++;
-	    } while (strchr(specials_repeat, ch));
+	    } while (strchr(specials_repeat, my_ch));
 	i = 1;
 	j = lastresword;
 	do {
 	    k = (i + j) / 2;
-	    if (strcmp(res, reswords[k].alf) <= 0)
+	    if (strcmp(ident, reswords[k].alf) <= 0)
 		j = k - 1;
-	    if (strcmp(res, reswords[k].alf) >= 0)
+	    if (strcmp(ident, reswords[k].alf) >= 0)
 		i = k + 1;
 	} while (i <= j);
 	if (i - 1 > j)	/* OTHERWISE */
@@ -725,6 +712,9 @@ einde:
 	    sym = identifier;
 	break;
     }  /* CASE */
+#ifdef DEBUG
+    fprintf(stderr, "sym = %d ident = %s num = %ld\n", sym, ident, num);
+#endif
 }  /* getsym */
 
 /* - - - - -   MODULE OUTPUT   - - - - - */
@@ -1569,7 +1559,7 @@ static void joy(memrange nod)
 
 	case getch_:
 	    getch();
-	    s = kons(integer_, ch, s);
+	    s = kons(integer_, my_ch, s);
 	    break;
 
 	/* COMBINATORS: */
