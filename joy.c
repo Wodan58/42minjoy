@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.12.1.3
-    date    : 07/24/20
+    version : 1.12.1.5
+    date    : 04/27/21
 */
 #include <stdio.h>
 #include <string.h>
@@ -189,6 +189,11 @@ static void point(char diag, char *mes)
 
 /* - - - - -   MODULE SCANNER  - - - - - */
 
+static void closelisting(void)
+{
+    fclose(listing);
+}
+
 /*
     iniscanner - initialize global variables
 */
@@ -199,6 +204,7 @@ static void iniscanner(void)
 	fprintf(stderr, "%s (not open for writing)\n", list_filename);
 	exit(0);
     }
+    atexit(closelisting);
     writelisting = 0;
     my_ch = ' ';
     linenumber = 0;
@@ -236,14 +242,28 @@ static void est(char *a, standardident symb)
     stdidents[laststdident].symb = symb;
 }  /* est */
 
+static void release(void)
+{
+    int i;
+
+    for (i = 0; i < maxincludelevel; i++)
+	if (inputs[i].fil)
+	    fclose(inputs[i].fil);
+}
+
 static void newfile(char *a)
 {
+    static int init;
     int i;
 #if 0
     char str[256];
 #endif
 
     LOGFILE(__func__);
+    if (!init) {
+	init = 1;
+	atexit(release);
+    }
     strncpy(inputs[includelevel].nam, a, identlength);
     inputs[includelevel].nam[identlength] = 0;
     inputs[includelevel].lastlinenumber = linenumber;
@@ -252,14 +272,17 @@ static void newfile(char *a)
     for (i = strlen(str) - 1; isspace((int)str[i]); i--)
 	;
     str[i + 1] = 0;
-#endif
     for (i = 0; i < includelevel; i++)
 	if (!strcmp(inputs[i].nam, inputs[includelevel].nam)) {
 	    fclose(inputs[i].fil);
+	    inputs[i].fil = NULL;
 	    break;
 	}
-    if (inputs[includelevel].fil != NULL)
+#endif
+    if (inputs[includelevel].fil != NULL) {
 	fclose(inputs[includelevel].fil);
+	inputs[includelevel].fil = NULL;
+    }
     if ((inputs[includelevel].fil = fopen(a, "r")) == NULL) {
 	fprintf(stderr, "%s (not open for reading)\n", a);
 	exit(0);
@@ -1633,8 +1656,8 @@ int main(int argc, char *argv[])
 
     LOGFILE(__func__);
     start_clock = clock();
-    atexit(perhapsstatistics);
     initialise();
+    atexit(perhapsstatistics);
     for (i = 1; i <= MAXMEM; i++) {
 	m[i].marked = false;
 	m[i].nxt = i + 1;
