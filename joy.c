@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.12.1.5
-    date    : 04/27/21
+    version : 1.26
+    date    : 06/21/21
 */
 #include <stdio.h>
 #include <string.h>
@@ -9,9 +9,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <setjmp.h>
+#include <inttypes.h>
+
+/* #define DEBUG */
 
 #ifdef _MSC_VER
-#pragma warning(disable : 4244 4996 )
+#pragma warning(disable : 4244 4996)
 #endif
 
 #define CORRECT_GARBAGE
@@ -32,6 +35,7 @@ typedef unsigned char boolean;
 #define false 0
 
 #define errormark	"%JOY"
+
 #define lib_filename	"42minjoy.lib"
 #define list_filename	"42minjoy.lst"
 
@@ -61,7 +65,7 @@ typedef enum {
     boolean_, char_, integer_, list_, unknownident
 } standardident;
 
-/* File: Included file for scanutilities */
+/* File: Included file for scan utilities */
 
 #define maxincludelevel	  5
 #define maxlinelength	  132
@@ -121,7 +125,7 @@ static boolean must_repeat_line;
 static long scantimevariables['Z' + 1 - 'A'];
 static long alternative_radix, linenumber;
 static char line[maxlinelength + 1];
-static int cc, ll;
+static size_t cc, ll;
 static int my_ch;
 static identalfa ident;
 static standardident id;
@@ -147,8 +151,8 @@ static clock_t start_clock, end_clock;
 
 static void point_to_symbol(boolean repeatline, FILE *f, char diag, char *mes)
 {
-    int i;
     char c;
+    int i, j;
 
     LOGFILE(__func__);
     if (repeatline) {
@@ -158,7 +162,8 @@ static void point_to_symbol(boolean repeatline, FILE *f, char diag, char *mes)
 	putc('\n', f);
     }
     fputs(underliner, f);
-    for (i = 0; i < cc - 2; i++)
+    j = cc;
+    for (i = 0, j -= 2; i < j; i++)
 	if ((c = line[i]) < ' ')
 	    putc(c, f);
 	else
@@ -254,8 +259,8 @@ static void release(void)
 static void newfile(char *a)
 {
     static int init;
-    int i;
 #if 0
+    int i;
     char str[256];
 #endif
 
@@ -299,7 +304,7 @@ static void getsym(void);
 
 static void perhapslisting(void)
 {
-    int i, j;
+    size_t i, j;
 
     LOGFILE(__func__);
     if (writelisting > 0) {
@@ -476,8 +481,7 @@ static void directive(void)
     if (!strcmp(dir, "IF")) {
 	if (value() < 1)
 	    cc = ll;  /* readln */
-    }
-    else if (!strcmp(dir, "INCLUDE")) {
+    } else if (!strcmp(dir, "INCLUDE")) {
 	if (includelevel == maxincludelevel)
 	    point('F', "too many include files");
 	while (my_ch <= ' ')
@@ -493,16 +497,17 @@ static void directive(void)
 	} while (my_ch > ' ');
 	ident[i] = 0;
 	newfile(ident);
-    }
-    else if (!strcmp(dir, "PUT")) {
-        for (i = ll - 1; i > 0 && line[i] <= ' '; i--)
+    } else if (!strcmp(dir, "PUT")) {
+	j = ll;
+        for (i = j - 1; i > 0 && line[i] <= ' '; i--)
             ;
-	for (j = i + 1, i = cc - 1; i < j; i++)
+	j = i + 1;
+	i = cc;
+	for (i--; i < j; i++)
 	    fputc(line[i], stderr);
 	fputc('\n', stderr);
 	cc = ll;
-    }
-    else if (!strcmp(dir, "SET")) {
+    } else if (!strcmp(dir, "SET")) {
 	while (my_ch <= ' ')
 	    getch();
 	if (!isupper(my_ch))
@@ -735,9 +740,6 @@ einde:
 	    sym = identifier;
 	break;
     }  /* CASE */
-#ifdef DEBUG
-    fprintf(stderr, "sym = %d ident = %s num = %ld\n", sym, ident, num);
-#endif
 }  /* getsym */
 
 /* - - - - -   MODULE OUTPUT   - - - - - */
@@ -768,7 +770,8 @@ static void writeline(void)
 
 static void writeident(char *a)
 {
-    int i, length;
+    int i;
+    size_t length;
 
     LOGFILE(__func__);
 #if 0
@@ -901,7 +904,7 @@ typedef struct _REC_table {
 } _REC_table;
 
 typedef struct _REC_m {
-    long val;
+    intptr_t val;
     memrange nxt;
     unsigned char op;
     boolean marked;
@@ -914,7 +917,9 @@ static memrange firstusernode, freelist, programme;
 static memrange s,  /* stack */
 		dump;
 
+#if 0
 static standardident last_op_executed;
+#endif
 static long stat_kons, stat_gc, stat_ops, stat_calls;
 static clock_t stat_lib;
 
@@ -942,7 +947,7 @@ void DumpM(void)
 	    identlength, "name");
     for (i = 1; i <= MAXMEM && m[i].marked; i++)
 	fprintf(fp, "%4ld %-*.*s %10ld %4ld %c\n", i, identlength, identlength,
-		standardident_NAMES[m[i].op], m[i].val, (long)m[i].nxt,
+		standardident_NAMES[m[i].op], (long)m[i].val, (long)m[i].nxt,
 		m[i].marked ? 'T' : 'F');
     fclose(fp);
 }
@@ -1025,7 +1030,7 @@ static void wn(FILE *f, memrange n)
     else
 #endif
 	fprintf(f, "%5ld %-*.*s %10ld %10ld %c", (long)n, identlength,
-	    identlength, standardident_NAMES[m[n].op], m[n].val,
+	    identlength, standardident_NAMES[m[n].op], (long)m[n].val,
 	    (long)m[n].nxt, m[n].marked ? 'T' : 'F');
     if (m[n].op == lib_)
 	fprintf(f, "   %-*.*s %4ld", identlength, identlength,
@@ -1056,7 +1061,7 @@ static void mark(memrange n)
     }
 }  /* mark */
 
-static memrange kons(standardident o, long v, memrange n)
+static memrange kons(standardident o, intptr_t v, memrange n)
 {
     memrange i;
     long collected;
@@ -1121,7 +1126,7 @@ einde:
     return i;
 }  /* kons */
 
-static char *my_strdup(char* str)
+static char *my_strdup(char *str)
 {
     char *ptr;
     size_t leng;
@@ -1156,7 +1161,7 @@ static void readfactor(memrange *where)
 	lookup();
 #ifdef READ_LIBRARY_ONCE
 	if (id == unknownident)
-	    *where = kons(id, (long)my_strdup(ident), 0);
+	    *where = kons(id, (intptr_t)my_strdup(ident), 0);
 	else
 #endif
 	    *where = kons(id, locatn, 0);
@@ -1288,6 +1293,7 @@ static void patchfactor(memrange n)
 	    strncpy(ident, (char *)m[n].val, identlength);
 	    ident[identlength] = 0;
 	    free((char *)m[n].val);
+	    m[n].val = 0;
 	    lookup();
 	    m[n].op = id;
 	    m[n].val = locatn;
@@ -1453,7 +1459,9 @@ static void joy(memrange nod)
 	    putch(' ');
 	    writeterm(dump, true);
 	}
+#if 0
 	last_op_executed = m[nod].op;
+#endif
 	switch (m[nod].op) {
 
 	case nothing_:
@@ -1697,7 +1705,9 @@ int main(int argc, char *argv[])
     do {
 	getsym();
 	if (sym != period) {
+#if 0
 	    last_op_executed = get_;
+#endif
 	    programme = 0;
 	    readfactor(&programme);
 	    if (writelisting > 2) {
