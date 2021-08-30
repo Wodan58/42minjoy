@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.26
-    date    : 06/21/21
+    version : 1.27
+    date    : 07/30/21
 */
 #include <stdio.h>
 #include <string.h>
@@ -162,7 +162,7 @@ static void point_to_symbol(boolean repeatline, FILE *f, char diag, char *mes)
 	putc('\n', f);
     }
     fputs(underliner, f);
-    j = cc;
+    j = (int)cc;
     for (i = 0, j -= 2; i < j; i++)
 	if ((c = line[i]) < ' ')
 	    putc(c, f);
@@ -498,11 +498,11 @@ static void directive(void)
 	ident[i] = 0;
 	newfile(ident);
     } else if (!strcmp(dir, "PUT")) {
-	j = ll;
+	j = (int)ll;
         for (i = j - 1; i > 0 && line[i] <= ' '; i--)
             ;
 	j = i + 1;
-	i = cc;
+	i = (int)cc;
 	for (i--; i < j; i++)
 	    fputc(line[i], stderr);
 	fputc('\n', stderr);
