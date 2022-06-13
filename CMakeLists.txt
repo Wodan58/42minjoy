@@ -1,16 +1,20 @@
 #
-#   Makefile for 42minjoy
+#   module  : CMakeLists.txt
+#   version : 1.1
+#   date    : 06/13/22
 #
 cmake_minimum_required(VERSION 3.0)
 project(42minjoy VERSION 1.0)
 if("${CMAKE_BUILD_TYPE}" STREQUAL "")
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 endif()
-option(RUN_TESTS "Run standard tests" ON)
 if(WIN32)
+set(CMAKE_BUILD_TYPE Release)
+option(RUN_TESTS "Run standard tests" OFF)
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
-if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+option(RUN_TESTS "Run standard tests" ON)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ansi -pedantic -g -O0 --coverage -fprofile-arcs -ftest-coverage") # debug, no optimisation
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage") # enabling coverage
 endif()
