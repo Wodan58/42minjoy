@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.1
-    date    : 06/06/22
+    version : 1.2
+    date    : 05/30/23
 */
 /* File: Included file for scan utilities */
 
@@ -772,7 +772,7 @@ static void fin(FILE *f)
     if (errorcount > 0)
 	fprintf(f, "%ld error(s)\n", errorcount);
     end_clock = clock() - start_clock;
-    fprintf(f, "%ld milliseconds CPU\n", end_clock);
+    fprintf(f, "%f seconds CPU\n", (double)end_clock / CLOCKS_PER_SEC);
 }
 
 static void finalise(void)
