@@ -20,7 +20,9 @@ and that is why this feature was removed.
 Installation
 ------------
 
-    cmake .
+    mkdir build
+    cd build
+    cmake ..
     cmake --build .
 
 Debugging

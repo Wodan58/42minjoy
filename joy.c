@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.29
-    date    : 05/30/23
+    version : 1.31
+    date    : 08/20/23
 */
 #include <stdio.h>
 #include <string.h>
@@ -873,10 +873,10 @@ static void joy(memrange nod)
 static void writestatistics(FILE *f)
 {
     LOGFILE(__func__);
-    fprintf(f, "%f seconds CPU to read library\n",
-           (double)(stat_lib - start_clock) / CLOCKS_PER_SEC);
-    fprintf(f, "%f seconds CPU to execute\n",
-           (double)(end_clock - stat_lib) / CLOCKS_PER_SEC);
+    fprintf(f, "%ld milliseconds CPU to read library\n",
+           (stat_lib - start_clock) * 1000 / CLOCKS_PER_SEC);
+    fprintf(f, "%ld milliseconds CPU to execute\n",
+           (end_clock - stat_lib) * 1000 / CLOCKS_PER_SEC);
     fprintf(f, "%lu user nodes available\n", MAXMEM - firstusernode + 1L);
     fprintf(f, "%lu garbage collections\n", stat_gc);
     fprintf(f, "%lu nodes used\n", stat_kons);
@@ -968,6 +968,7 @@ static void perhapsstatistics(void)
 {
     LOGFILE(__func__);
     if (statistics > 0) {
+	fflush(stdout);
 	writestatistics(stderr);
 	if (writelisting > 0)
 	    writestatistics(listing);

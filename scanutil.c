@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.2
-    date    : 05/30/23
+    version : 1.4
+    date    : 08/20/23
 */
 /* File: Included file for scan utilities */
 
@@ -426,6 +426,7 @@ static void directive(void)
 	ident[i] = 0;
 	newfile(ident);
     } else if (!strcmp(dir, "PUT")) {
+	fflush(stdout);
 	for (i = cc - 1; i < ll; i++)
 	    fputc(line[i], stderr);
 	fputc('\n', stderr);
@@ -772,12 +773,13 @@ static void fin(FILE *f)
     if (errorcount > 0)
 	fprintf(f, "%ld error(s)\n", errorcount);
     end_clock = clock() - start_clock;
-    fprintf(f, "%f seconds CPU\n", (double)end_clock / CLOCKS_PER_SEC);
+    fprintf(f, "%ld milliseconds CPU\n", end_clock * 1000 / CLOCKS_PER_SEC);
 }
 
 static void finalise(void)
 {
     /* finalise */
+    fflush(stdout);
     fin(stderr);
     if (listing && writelisting > 0)
 	fin(listing);
