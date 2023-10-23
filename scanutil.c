@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.4
-    date    : 08/20/23
+    version : 1.5
+    date    : 10/23/23
 */
 /* File: Included file for scan utilities */
 
@@ -213,8 +213,7 @@ static void newfile(char *a)
 	init = 1;
 	atexit(release);
     }
-    strncpy(inputs[includelevel].nam, a, identlength);
-    inputs[includelevel].nam[identlength] = 0;
+    strcpy(inputs[includelevel].nam, a);
     inputs[includelevel].lastlinenumber = linenumber;
     if (inputs[includelevel].fil != NULL) {
 	fclose(inputs[includelevel].fil);
