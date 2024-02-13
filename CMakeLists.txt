@@ -1,7 +1,7 @@
 #
 #   module  : CMakeLists.txt
-#   version : 1.4
-#   date    : 08/20/23
+#   version : 1.5
+#   date    : 01/22/24
 #
 cmake_minimum_required(VERSION 3.0)
 project(42minjoy VERSION 1.0)
@@ -21,11 +21,11 @@ add_executable(joy joy.c)
 add_custom_target(demo01.txt ALL
                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                   DEPENDS joy
-                  COMMAND joy <tutorial.joy >demo01.txt)
+                  COMMAND joy tutorial.joy >demo01.txt)
 add_custom_target(demo02.txt ALL
                   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
                   DEPENDS joy
-                  COMMAND joy fib.lib fib.joy >demo02.txt)
+                  COMMAND joy fib.joy >demo02.txt)
 if(RUN_TESTS)
   add_subdirectory(test)
 endif()

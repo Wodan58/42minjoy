@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.31
-    date    : 08/20/23
+    version : 1.32
+    date    : 01/22/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +15,7 @@
 /* #define DEBUG */
 
 #ifdef _MSC_VER
-#pragma warning(disable : 4244 4996)
+#pragma warning(disable: 4244 4996)
 #endif
 
 #define CORRECT_GARBAGE
@@ -533,14 +533,32 @@ static void patchfactor(memrange n)
 static void readlibrary(char *str)
 {
     int loc;
+#ifdef READ_LIBRARY_ONCE
+    FILE *fp;
+#endif
 
     LOGFILE(__func__);
 #if 0
     if (writelisting > 5)
 	fprintf(listing, "first pass through library:\n");
 #endif
-    newfile(str);
+    /*
+     * Check that the library file is present. If not, this should not be a
+     * fatal error. Some global variables need to be set in case that happens.
+     */
     lastlibloc = 0;
+#ifdef READ_LIBRARY_ONCE
+    if ((fp = fopen(str, "r")) == NULL) {
+	firstusernode = freelist;
+	cc = ll;
+	sentinel = lastlibloc + 1;
+	lasttable = sentinel;
+	adjustment = 0;
+	return;
+    }
+    fclose(fp);
+#endif
+    newfile(str);
     getsym();
 #if 0
     do {
@@ -584,6 +602,9 @@ static void readlibrary(char *str)
 	lookup();
 	loc = locatn;
 #endif
+	/*
+	 * In case of READ_LIBRARY_ONCE, continue here.
+	 */
 	getsym();
 	if (sym != def_equal)
 	    point('F', "pass 2: \"==\" expected");
@@ -872,11 +893,19 @@ static void joy(memrange nod)
 
 static void writestatistics(FILE *f)
 {
+    double lib;
+
     LOGFILE(__func__);
-    fprintf(f, "%ld milliseconds CPU to read library\n",
-           (stat_lib - start_clock) * 1000 / CLOCKS_PER_SEC);
-    fprintf(f, "%ld milliseconds CPU to execute\n",
-           (end_clock - stat_lib) * 1000 / CLOCKS_PER_SEC);
+    lib = stat_lib;
+    if ((lib -= start_clock) < 0)
+	lib = 0;
+    fprintf(f, "%.0f milliseconds CPU to read library\n",
+            lib * 1000 / CLOCKS_PER_SEC);
+    lib = end_clock;
+    if ((lib -= stat_lib) < 0)
+	lib = 0;
+    fprintf(f, "%.0f milliseconds CPU to execute\n",
+            lib * 1000 / CLOCKS_PER_SEC);
     fprintf(f, "%lu user nodes available\n", MAXMEM - firstusernode + 1L);
     fprintf(f, "%lu garbage collections\n", stat_gc);
     fprintf(f, "%lu nodes used\n", stat_kons);
@@ -889,7 +918,7 @@ static void perhapsstatistics(void);
 int main(int argc, char *argv[])
 {  /* main */
     memrange i;
-    int j, k = 1;
+    int j;
 
     LOGFILE(__func__);
     start_clock = clock();
@@ -908,12 +937,11 @@ int main(int argc, char *argv[])
     stat_calls = 0;
     sentinel = 0;
     firstusernode = 0;
-    if (argc == 1)
-	readlibrary(lib_filename);
-    else {
-	argc--;
-	readlibrary(argv[k++]);
-    }
+    /*
+     * The library is 42minjoy.lib. If not present, only programs can be used,
+     * no definitions.
+     */
+    readlibrary(lib_filename);
     stat_lib = clock();
     if (writelisting > 2)
 	for (j = 1; j <= lastlibloc; j++) {
@@ -928,8 +956,11 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
     DumpM();
 #endif
+    /*
+     * A filename parameter is possible; it contains programs to be executed.
+     */
     if (argc > 1)
-	newfile(argv[k]);
+	newfile(argv[1]);
     setjmp(JL10);
     do {
 	getsym();

@@ -1,4 +1,5 @@
-
+(* vi: filetype=joy
+*)
 (* RECURSIVE FUNCTIONS, non-recursive computation *)
 
 (* "last" is a tail-recursive function *)

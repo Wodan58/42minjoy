@@ -1,3 +1,5 @@
+(* vi:filetype=joy
+*)
 		sesame_f	==  [[duco] duco]		 ;
 		sesame_g_h      ==  [[unit dup car]]
 				    [ unit dup car ]		 ;

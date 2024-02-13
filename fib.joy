@@ -1,1 +1,7 @@
-[40 fib put 10 putch].
+(*
+    Fibonacci
+*)
+[25 fib put 10 putch]
+
+%STATISTICS 1
+.

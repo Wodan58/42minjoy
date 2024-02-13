@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.5
-    date    : 10/23/23
+    version : 1.6
+    date    : 01/22/24
 */
 /* File: Included file for scan utilities */
 
@@ -486,8 +486,10 @@ begin:
 	    num = ch;
 	    getch();
 	}
+#ifndef MINJOY
 	if (ch == '\'')
 	    getch();
+#endif
 	sym = charconst;
 	break;
 
@@ -580,6 +582,20 @@ begin:
 	}
 	break;
 
+#ifdef MINJOY
+    case '!':
+    case '$':
+    case ',':
+    case ':':
+    case '?':
+    case '@':
+    case '\\':
+    case '^':
+    case '_':
+    case '`':
+    case '|':
+    case '~':
+#endif
     case 'a':
     case 'b':
     case 'c':
@@ -769,10 +785,14 @@ static void writeinteger(long i)
 
 static void fin(FILE *f)
 {
+    double lib;
+
     if (errorcount > 0)
 	fprintf(f, "%ld error(s)\n", errorcount);
-    end_clock = clock() - start_clock;
-    fprintf(f, "%ld milliseconds CPU\n", end_clock * 1000 / CLOCKS_PER_SEC);
+    lib = end_clock = clock();
+    if ((lib -= start_clock) < 0)
+	lib = 0;
+    fprintf(f, "%.0f milliseconds CPU\n", lib * 1000 / CLOCKS_PER_SEC);
 }
 
 static void finalise(void)

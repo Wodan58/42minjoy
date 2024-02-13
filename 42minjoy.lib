@@ -1,3 +1,9 @@
+(*  vi: filetype=joy
+    Set F to 1 : include definition for fib
+    Set F to 0 : exclude definition for fib
+*)
+%SET F = 1
+
 %IF  = P 0  %SET  P = 1
 %IF  = P 1  %PUT First pass through library:
 %IF  = P 2  %PUT Second pass through library:
@@ -56,6 +62,9 @@ X	dup		==  X X					 *
 	factorial_rec	==  dup 1 <=
 			    [ pop 1 ] [ dup pred factorial_rec * ]
 			    branch				 ;
+
+%IF = F 1 %INCLUDE fib.lib
+
 (*
 	filter		==  [test] cons [] [cons] stepl		 ;
 *)

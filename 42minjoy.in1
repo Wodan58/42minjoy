@@ -1,4 +1,5 @@
-(* begin of include file *)
+(* vi: filetype=joy
+begin of include file *)
 
 (* SET-  and  IF-DIRECTIVES  *)
 
