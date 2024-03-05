@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.32
-    date    : 01/22/24
+    version : 1.33
+    date    : 03/05/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -20,6 +20,7 @@
 
 #define CORRECT_GARBAGE
 #define READ_LIBRARY_ONCE
+#define OBSOLETE_NOTHING
 
 #ifdef DEBUG
 int debug = 1;
@@ -61,9 +62,12 @@ typedef enum {
 
 typedef enum {
     lib_, mul_, add_, sub_, div_, lss_, eql_, and_, body_, cons_, dip_,
-    dup_, false_, get_, getch_, i_, index_, not_, nothing_, or_, pop_, put_,
-    putch_, sametype_, select_, stack_, step_, swap_, true_, uncons_, unstack_,
-    boolean_, char_, integer_, list_, unknownident
+    dup_, false_, get_, getch_, i_, index_, not_,
+#ifndef OBSOLETE_NOTHING
+    nothing_,
+#endif
+    or_, pop_, put_, putch_, sametype_, select_, stack_, step_, swap_, true_,
+    uncons_, unstack_, boolean_, char_, integer_, list_, unknownident
 } standardident;
 
 #define MINJOY
@@ -98,7 +102,9 @@ static void initialise(void)
     est("i",        i_);
     est("index",    index_);
     est("not",      not_);
+#ifndef OBSOLETE_NOTHING
     est("nothing",  nothing_);
+#endif
     est("or",       or_);
     est("pop",      pop_);
     est("put",      put_);
@@ -120,7 +126,7 @@ static void initialise(void)
 #define MAXTABLE	300
 #endif
 #ifndef MAXMEM
-#define MAXMEM		1999
+#define MAXMEM		2000
 #endif
 
 typedef short memrange;
@@ -152,9 +158,13 @@ static clock_t stat_lib;
 
 static char *standardident_NAMES[] = {
     "LIB", "*", "+", "-", "/", "<", "=", "and", "body", "cons", "dip", "dup",
-    "false", "get", "getch", "i", "index", "not", "nothing", "or", "pop",
-    "put", "putch", "sametype", "select", "stack", "step", "swap", "true",
-    "uncons", "unstack", "BOOLEAN", "CHAR", "INTEGER", "LIST", "UNKNOWN"
+    "false", "get", "getch", "i", "index", "not",
+#ifndef OBSOLETE_NOTHING
+    "nothing",
+#endif
+    "or", "pop", "put", "putch", "sametype", "select", "stack", "step", "swap",
+    "true", "uncons", "unstack", "BOOLEAN", "CHAR", "INTEGER", "LIST",
+    "UNKNOWN"
 };
 
 #ifdef DEBUG
@@ -711,8 +721,9 @@ static void joy(memrange nod)
 	last_op_executed = m[nod].op;
 #endif
 	switch (m[nod].op) {
-
+#ifndef OBSOLETE_NOTHING
 	case nothing_:
+#endif
 	case char_:
 	case integer_:
 	case list_:
@@ -789,16 +800,20 @@ static void joy(memrange nod)
 	    break;
 
 	case cons_:
+#ifndef OBSOLETE_NOTHING
 	    if (o(n(s)) == nothing_)
 		s = kons(list_, l(s), n(n(s)));
 	    else
+#endif
 		s = kons(list_, kons(o(n(s)), v(n(s)), v(s)), n(n(s)));
 	    break;
 
 	case uncons_:
+#ifndef OBSOLETE_NOTHING
 	    if (!v(s))
 		s = kons(list_, 0, kons(nothing_, nothing_, n(s)));
 	    else
+#endif
 		s = kons(list_, n(l(s)), kons(o(l(s)), v(l(s)), n(s)));
 	    break;
 

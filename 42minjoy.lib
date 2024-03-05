@@ -96,77 +96,83 @@ X	dup		==  X X					 *
 	member		==  swap contains			 ;
 	mm		==  [pair] dip map unpair		 ;
 	mullists	==  [*] zip				 ;
-	newline		==  '\10  put                            ;
-        nil             ==  []                                   ;
-                                                                (*
-B1      not             ==  B2          where B2 = not B1        *
-                                                                 *)
-        null            ==  car nothing sametype                 ;
-        nullary         ==  stack swap dip rest cons unstack     ;
-                                                                (*
-B1 B2   or              ==  B3          where B3 = (B1 or B2)    *
-                                                                 *)
-        pair            ==  [] cons cons                         ;
-        pairlists       ==  [pair] zip                           ;
-        partition       ==  [[][]] dip
-                            dup
-                            [ first >
-                              [cnos]
-                              [swap [cnos] dip]
-                              branch ]
-                            cons
-                            [dup] first cnos
-                            step                                 ;
-        partition1      ==  [[][]] dip
-                            dup first
-                            [ first >
-                              [cnos]
-                              [swap [cnos] dip]
-                              branch ]
-                            cons
-                            [first] first cnos
-                            [dup] first cnos
-                            step                                 ;
-                                                                (*
-X       pop             ==                                       *
-                                                                 *)
-        pred            ==  1 -                                  ;
-        product         ==  1 [*] fold                           ;
-        putln           ==  put newline                          ;
-        putsp           ==  put space put                        ;
-                                                                (*
-        quicksort       :   IF the list has only 0 or 1 member
-                                THEN leave it as it is
-                                ELSE partition into two,
-                                     quicksort both,
-                                     concatenate them
-                                                                *)
-        quicksort       ==  dup small
-                            []
-                            [ partition
-                              quicksort [quicksort] dip
-                              concat ]
-                            branch                               ;
-        quicksort1      ==  dup small
-                            []
-                            [ partition1
-                              quicksort1 [quicksort1] dip
-                              concat ]
-                            branch                               ;
-        rest            ==  uncons swap pop                      ;
-        reverse         ==  [] swap shunt                        ;
-        rmap            ==  [] swap [[swap cons] b] cons fold    ;
-        rolldown        ==  [swap] dip swap                      ;
-        rollup          ==  swap [swap] dip                      ;
-        second          ==  rest first                           ;
+	newline		==  '\10 put				 ;
+	nil		==  []					 ;
+								(*
+B1      not		==  B2	  where B2 = not B1		 *
+	null		==  car nothing sametype		 *
+								 *)
+	null		==  nil =				 ;
+	nullary		==  stack swap dip rest cons unstack     ;
+								(*
+B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
+								 *)
+	pair		==  [] cons cons			 ;
+	pairlists       ==  [pair] zip				 ;
+	partition       ==  [[][]] dip
+			    dup
+			    [ first >
+			      [cnos]
+			      [swap [cnos] dip]
+			      branch ]
+			    cons
+			    [dup] first cnos
+			    step				 ;
+	partition1      ==  [[][]] dip
+			    dup first
+			    [ first >
+			      [cnos]
+			      [swap [cnos] dip]
+			      branch ]
+			    cons
+			    [first] first cnos
+			    [dup] first cnos
+			    step				 ;
+								(*
+X       pop		==					 *
+								 *)
+	pred		==  1 -					 ;
+	product		==  1 [*] fold				 ;
+	putln		==  put newline				 ;
+	putsp		==  put space put			 ;
+								(*
+	quicksort       :   IF the list has only 0 or 1 member
+				THEN leave it as it is
+				ELSE partition into two,
+				     quicksort both,
+				     concatenate them
+								*)
+	quicksort       ==  dup small
+			    []
+			    [ partition
+			      quicksort [quicksort] dip
+			      concat ]
+			    branch				 ;
+	quicksort1      ==  dup small
+			    []
+			    [ partition1
+			      quicksort1 [quicksort1] dip
+			      concat ]
+			    branch				 ;
+	rest		==  uncons swap pop			 ;
+	reverse		==  [] swap shunt			 ;
+	rmap		==  [] swap [[swap cons] b] cons fold    ;
+	rolldown	==  [swap] dip swap			 ;
+	rollup		==  swap [swap] dip			 ;
+	second		==  rest first				 ;
 
 %INCLUDE 42minjoy.ses
 
-        shunt           ==   [cnos] step                         ;
-        shuntmap        ==   [[cnos] b] cons step                ;
-        small           ==  uncons null swap pop                 ;
-        solostack       ==  stack [clearstack] dip               ;
-        space           ==  '\32	(* one space *)		 ;
+	shunt		==   [cnos] step			 ;
+	shuntmap	==   [[cnos] b] cons step		 ;
+(*
+	small		==  uncons null swap pop		 *
+*)
+	small		==  dup null [[rest null] [pop true]]
+			    index i				 ;
+
+	solostack       ==  stack [clearstack] dip		 ;
+	space		==  '\32	(* one space *)		 ;
 	square		==  dup *				 ;
 	succ		==  1 +					 ;
 	sum		==  0 [+] fold				 ;
