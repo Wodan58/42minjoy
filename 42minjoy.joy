@@ -15,11 +15,11 @@ joy	==
 	    [ swap      pop swap ]
 	    [ cons      pop cons ]
 	    [ uncons    pop uncons ]
-	    [ select    pop select ]
-	    [ *	 pop * ]
-	    [ +	 pop + ]
-	    [ -	 pop - ]
-	    [ /	 pop / ]
+	    [ select    pop opcase ]
+	    [ *	        pop * ]
+	    [ +	        pop + ]
+	    [ -	        pop - ]
+	    [ /	        pop / ]
 	    [ and       pop and ]
 	    [ or	pop or ]
 	    [ not       pop not ]
@@ -27,11 +27,11 @@ joy	==
 	    [ put       pop put ]
 	    [ get       pop get ]
 						(* COMBINATORS: *)
-	    [ i	 pop [joy] cons i ]
+	    [ i         pop [joy] cons i ]
 	    [ dip       pop [joy] cons dip ]
 	    [ step      pop [joy] cons step ]
 						(* DEFINED      *)
 	    [ joy       body joy ]  ]
-	select
+	opcase
 	i ]
     step							 ;

@@ -35,7 +35,7 @@ will be:
 
     gdb joy
     ...
-    run 42minjoy.lib tutorial.joy
+    run tutorial.joy
     ...
     quit
 

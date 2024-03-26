@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.33
-    date    : 03/05/24
+    version : 1.34
+    date    : 03/21/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +21,8 @@
 #define CORRECT_GARBAGE
 #define READ_LIBRARY_ONCE
 #define OBSOLETE_NOTHING
+#define RENAME_INDEX
+#define RENAME_SELECT
 
 #ifdef DEBUG
 int debug = 1;
@@ -61,12 +63,26 @@ typedef enum {
 } symbol;
 
 typedef enum {
-    lib_, mul_, add_, sub_, div_, lss_, eql_, and_, body_, cons_, dip_,
-    dup_, false_, get_, getch_, i_, index_, not_,
+    lib_, mul_, add_, sub_, div_, lss_, eql_, and_, body_, cons_, dip_, dup_,
+    false_, get_, getch_, i_,
+#ifndef RENAME_INDEX
+    index_,
+#endif
+    not_,
 #ifndef OBSOLETE_NOTHING
     nothing_,
 #endif
-    or_, pop_, put_, putch_, sametype_, select_, stack_, step_, swap_, true_,
+#ifdef RENAME_INDEX
+    of_,
+#endif
+#ifdef RENAME_SELECT
+    opcase_,
+#endif
+    or_, pop_, put_, putch_, sametype_,
+#ifndef RENAME_SELECT
+    select_,
+#endif
+    stack_, step_, swap_, true_,
     uncons_, unstack_, boolean_, char_, integer_, list_, unknownident
 } standardident;
 
@@ -100,17 +116,27 @@ static void initialise(void)
     est("get",      get_);
     est("getch",    getch_);
     est("i",        i_);
+#ifndef RENAME_INDEX
     est("index",    index_);
+#endif
     est("not",      not_);
 #ifndef OBSOLETE_NOTHING
     est("nothing",  nothing_);
+#endif
+#ifdef RENAME_INDEX
+    est("of",       of_);
+#endif
+#ifdef RENAME_SELECT
+    est("opcase",   opcase_);
 #endif
     est("or",       or_);
     est("pop",      pop_);
     est("put",      put_);
     est("putch",    putch_);
     est("sametype", sametype_);
+#ifndef RENAME_SELECT
     est("select",   select_);
+#endif
     est("stack",    stack_);
     est("step",     step_);
     est("swap",     swap_);
@@ -158,13 +184,26 @@ static clock_t stat_lib;
 
 static char *standardident_NAMES[] = {
     "LIB", "*", "+", "-", "/", "<", "=", "and", "body", "cons", "dip", "dup",
-    "false", "get", "getch", "i", "index", "not",
+    "false", "get", "getch", "i",
+#ifndef RENAME_INDEX
+    "index",
+#endif
+    "not",
 #ifndef OBSOLETE_NOTHING
     "nothing",
 #endif
-    "or", "pop", "put", "putch", "sametype", "select", "stack", "step", "swap",
-    "true", "uncons", "unstack", "BOOLEAN", "CHAR", "INTEGER", "LIST",
-    "UNKNOWN"
+#ifdef RENAME_INDEX
+    "of",
+#endif
+#ifdef RENAME_SELECT
+    "opcase",
+#endif
+    "or", "pop", "put", "putch", "sametype",
+#ifndef RENAME_SELECT
+    "select",
+#endif
+    "stack", "step", "swap", "true",
+    "uncons", "unstack", "BOOLEAN", "CHAR", "INTEGER", "LIST", "UNKNOWN"
 };
 
 #ifdef DEBUG
@@ -659,7 +698,7 @@ static standardident o(memrange x)
     return m[ok(x)].op;
 }
 
-static long i(memrange x)
+static intptr_t i(memrange x)
 {
     if (o(x) == integer_)
 	return m[x].val;
@@ -683,7 +722,7 @@ static memrange n(memrange x)
     longjmp(JL10, 1);
 }  /* n */
 
-static long v(memrange x)
+static intptr_t v(memrange x)
 {
     return m[ok(x)].val;
 }
@@ -693,13 +732,16 @@ static boolean b(memrange x)
     return (boolean)(v(x) > 0);
 }
 
-static void binary(standardident o, long v)
+static void binary(standardident o, intptr_t v)
 {
     s = kons(o, v, n(n(s)));
 }
 
 static void joy(memrange nod)
 {
+#ifdef RENAME_INDEX
+    intptr_t val;
+#endif
     memrange temp1, temp2;
 
     LOGFILE(__func__);
@@ -817,19 +859,32 @@ static void joy(memrange nod)
 		s = kons(list_, n(l(s)), kons(o(l(s)), v(l(s)), n(s)));
 	    break;
 
+#ifdef RENAME_SELECT
+	case opcase_:
+#else
 	case select_:
+#endif
 	    temp1 = l(s);
 	    while (o(l(temp1)) != o(n(s)))
 		temp1 = n(temp1);
 	    s = kons(list_, n(l(temp1)), n(s));
 	    break;
 
+#ifdef RENAME_INDEX
+	case of_:
+	    temp1 = l(s);
+	    for (val = v(n(s)); val > 0; val--)
+		temp1 = n(temp1);
+	    s = kons(o(temp1), v(temp1), n(n(s)));
+	    break;
+#else
 	case index_:
 	    if (v(n(s)) < 1)
 		s = kons(o(l(s)), v(l(s)), n(n(s)));
 	    else
 		s = kons(o(n(l(s))), v(n(l(s))), n(n(s)));
 	    break;
+#endif
 
 	case body_:
 	    s = kons(list_, table[v(s)].adr, n(s));

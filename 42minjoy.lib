@@ -29,7 +29,7 @@ B1 B2	and		==  B3		where B3 = (B1 and B2)	 *
 								 *)
 	b		==  [i] dip i				 ;
 	boolean		==  true sametype			 ;
-	branch		==  swap pair index i			 ;
+	branch		==  swap pair of i			 ;
 	c		==  [swap] dip i			 ;
 	car		==  uncons pop				 ;
 	cdr		==  uncons swap pop			 ;
@@ -44,7 +44,7 @@ nothing [Xs] cons	==  [Xs]				 *
 	construct0	==  [dip swap] map			 ;
 	construct1	==  [[dip swap] map] unary		 ;
 	construct2	==  [[nullary] cons dip swap] map	 ;
-	contains	==  false swap [ = or ] cons fold	 ;
+	contains	==  false swap [ = or] cons fold 	 ;
 	cube		==  dup dup * *				 ;
 	definition	==  first body				 ;
 								(*
@@ -58,15 +58,15 @@ X	dup		==  X X					 *
 	dureco		==  dup rest cons			 ;
 	exp		==  dup 0 =
 			    [pop pop 1] [[dup] dip 1 - exp *]
-			    branch ;
+			    branch				 ;
 	factorial_rec	==  dup 1 <=
-			    [ pop 1 ] [ dup pred factorial_rec * ]
+			    [pop 1] [dup pred factorial_rec *]
 			    branch				 ;
 
 %IF = F 1 %INCLUDE fib.lib
 
 (*
-	filter		==  [test] cons [] [cons] stepl		 ;
+	filter		==  [test] cons [] [cons] stepl		 *
 *)
 	first		==  uncons pop				 ;
 	fix		==  [duco] first swap cons duco		 ;
@@ -100,8 +100,10 @@ X	dup		==  X X					 *
 	nil		==  []					 ;
 								(*
 B1      not		==  B2	  where B2 = not B1		 *
-	null		==  car nothing sametype		 *
 								 *)
+(*
+	null		==  car nothing sametype		 *
+*)
 	null		==  nil =				 ;
 	nullary		==  stack swap dip rest cons unstack     ;
 								(*
@@ -163,14 +165,13 @@ X       pop		==					 *
 
 %INCLUDE 42minjoy.ses
 
-	shunt		==   [cnos] step			 ;
-	shuntmap	==   [[cnos] b] cons step		 ;
+	shunt		==  [cnos] step			 	 ;
+	shuntmap	==  [[cnos] b] cons step		 ;
 (*
 	small		==  uncons null swap pop		 *
 *)
 	small		==  dup null [[rest null] [pop true]]
-			    index i				 ;
-
+			    of i				 ;
 	solostack       ==  stack [clearstack] dip		 ;
 	space		==  '\32	(* one space *)		 ;
 	square		==  dup *				 ;

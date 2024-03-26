@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.6
-    date    : 01/22/24
+    version : 1.7
+    date    : 03/21/24
 */
 /* File: Included file for scan utilities */
 
@@ -763,14 +763,14 @@ static void writeresword(char *a)
 }
 #endif
 
-static void writenatural(unsigned long n)
+static void writenatural(intptr_t n)
 {
     if (n >= 10)
 	writenatural(n / 10);
     putch(n % 10 + '0');
 }
 
-static void writeinteger(long i)
+static void writeinteger(intptr_t i)
 {
     if (outlinelength + 12 > maxoutlinelength)
 	writeline();
