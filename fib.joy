@@ -1,7 +1,6 @@
 (*
     Fibonacci
 *)
-[25 fib put 10 putch]
+14 fib.
 
 %STATISTICS 1
-.

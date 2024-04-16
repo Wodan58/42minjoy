@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.7
-    date    : 03/21/24
+    version : 1.8
+    date    : 04/11/24
 */
 /* File: Included file for scan utilities */
 
@@ -164,6 +164,14 @@ static void iniscanner(void)
     ll = 1; /* to enable fatal message during initialisation */
     memset(specials_repeat, 0, sizeof(specials_repeat)); /* def: no repeats */
     includelevel = 0;
+    /*
+     * Initial input file is stdin.
+     */
+#if 0
+    inputs[0].fil = stdin;
+    strcpy(inputs[0].nam, "stdin");
+    inputs[0].lastlinenumber = 1;
+#endif
     adjustment = 0;
     alternative_radix = initial_alternative_radix;
     lastresword = 0;
@@ -205,13 +213,21 @@ static void release(void)
 	}
 }
 
-static void newfile(char *a)
+static void newfile(char *a, int flag)
 {
-    static int init;
+    static unsigned char init;
 
     if (!init) {
 	init = 1;
 	atexit(release);
+    }
+    if (!flag) {
+	if (!freopen(a, "r", stdin)) {
+	    fprintf(stderr, "%s (not open for reading)\n", a);
+	    exit(0);
+	}
+	adjustment = 0;
+	return;
     }
     strcpy(inputs[includelevel].nam, a);
     inputs[includelevel].lastlinenumber = linenumber;
@@ -423,7 +439,7 @@ static void directive(void)
 	    getch();
 	} while (ch > ' ');
 	ident[i] = 0;
-	newfile(ident);
+	newfile(ident, 1);
     } else if (!strcmp(dir, "PUT")) {
 	fflush(stdout);
 	for (i = cc - 1; i < ll; i++)

@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.34
-    date    : 03/21/24
+    version : 1.36
+    date    : 04/12/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +15,7 @@
 /* #define DEBUG */
 
 #ifdef _MSC_VER
-#pragma warning(disable: 4244 4996)
+#pragma warning(disable: 4244 4267 4996)
 #endif
 
 #define CORRECT_GARBAGE
@@ -457,6 +457,10 @@ static void readfactor(memrange *where)
 	break;
 #endif
 
+    case period:
+	*where = 0;
+	return;
+
     default:
 	point('F', "internal in readfactor");
     }  /* CASE */
@@ -471,7 +475,8 @@ static void readterm(memrange *first)
     LOGFILE(__func__);
     /* this is LL0 */
     readfactor(first);
-    i = *first;
+    if ((i = *first) == 0)
+	return;
     getsym();
     while (sym == lbrack || sym == identifier || sym == charconst ||
 		sym == numberconst) {	/* sym == hyphen */
@@ -607,7 +612,7 @@ static void readlibrary(char *str)
     }
     fclose(fp);
 #endif
-    newfile(str);
+    newfile(str, 1);
     getsym();
 #if 0
     do {
@@ -638,7 +643,7 @@ static void readlibrary(char *str)
 #endif
     if (writelisting > 5)
 	fprintf(listing, "second pass through library:\n");
-    newfile(str);
+    newfile(str, 1);
 #if 0
     do {
 	getsym();
@@ -1028,46 +1033,52 @@ int main(int argc, char *argv[])
 #endif
     /*
      * A filename parameter is possible; it contains programs to be executed.
+     * The file replaces standard input.
      */
     if (argc > 1)
-	newfile(argv[1]);
+	newfile(argv[1], 0);
     setjmp(JL10);
-    do {
+    while (1) {
 	getsym();
-	if (sym != period) {
 #if 0
-	    last_op_executed = get_;
+	last_op_executed = get_;
 #endif
-	    programme = 0;
-	    readfactor(&programme);
-	    if (writelisting > 2) {
-		writeident("interpreting:");
-		writeline();
-		writefactor(programme, true);
-	    }
-	    if (dump != 0) {
-		printf("dump error: should be empty!\n");
-		writeterm(dump, true);
-		dump = 0;
-	    }
-	    outlinelength = 0;
-	    joy(m[programme].val);
-	    if (outlinelength > 0)
-		writeline();
-	    if (writelisting > 2) {
-		writeident("stack:");
-		writeline();
-		writeterm(s, true);
-	    }
-	}  /* IF */
-    } while (sym != period);
-    finalise();
+	programme = 0;
+	readterm(&programme);
+	if (writelisting > 2) {
+	    writeident("interpreting:");
+	    writeline();
+	    writeterm(programme, true);
+	}
+	if (dump != 0) {
+	    printf("dump error: should be empty!\n");
+	    writeterm(dump, true);
+	    dump = 0;
+	}
+	outlinelength = 0;
+	joy(programme);
+	/*
+	 * Add automatic output of TOS and a newline.
+	 */
+	if (s) {
+	    writefactor(s, true);
+	    s = n(s);
+	}
+	if (outlinelength > 0)
+	    writeline();
+	if (writelisting > 2) {
+	    writeident("stack:");
+	    writeline();
+	    writeterm(s, true);
+	}
+    }
     return 0;
 }
 
 static void perhapsstatistics(void)
 {
     LOGFILE(__func__);
+    finalise();
     if (statistics > 0) {
 	fflush(stdout);
 	writestatistics(stderr);

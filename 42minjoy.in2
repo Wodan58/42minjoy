@@ -3,60 +3,60 @@
 (* RECURSIVE FUNCTIONS, non-recursive computation *)
 
 (* "last" is a tail-recursive function *)
-[  [ Smith Jones Robinson ]  last  put  ]
+   [ Smith Jones Robinson ]  last  .
 (* now let us look at the (recursive) definition of "last" *)
-[  [last]  definition  put  ]
-[  [ Smith Jones Robinson ]  [last]  definition  i  put  ]
+   [last]  definition  .
+   [ Smith Jones Robinson ]  [last]  definition  i  .
 (* using the x-combinator *)
-[  [Smith Jones Robinson]
+   [Smith Jones Robinson]
    [    swap dup rest null
         [ car swap pop ]
         [ cdr swap x ]          (* NOTE x-combinator *)
         branch ]
-   x put ]                      (* REPEAT x-combinator *)
+   x .                          (* REPEAT x-combinator *)
 (* using the y-combinator *)
-[  [Smith Jones Robinson]
+   [Smith Jones Robinson]
    [    swap dup rest null
         [ car swap pop ]
         [ cdr swap i ]          (* NOTE i-combinator *)
         branch ]
-   y put ]                      (* NOTE y-combinator *)
+   y .                          (* NOTE y-combinator *)
 
 (* "factorial" is not tail-recursive *)
-[  6 factorial_rec put ]
+   6 factorial_rec .
 (* using the x-combinator *)
-[  6
+   6
    [    swap dup 1 <=
         [ pop pop 1 ]
         [ dup pred rolldown x * ]
         branch ]
-   x put ]
+   x .
 (* using the y-combinator *)
-[  6
+   6
    [    swap dup 1 <=
         [ pop pop 1 ]
         [ dup pred rolldown i * ]
         branch ]
-   y put ]
+   y .
 
 (* "QUICKSORT" *)
 
-[ [1 9 2 8 3 7 4 6 5] quicksort putln ]
-[ [5 6 4 7 3 8 2 9 1] quicksort putln ]
-[ [1 2 3 4 5 6 7 8 9] quicksort putln ]
-[ [9 8 7 6 5 4 3 2 1] quicksort putln ]
+  [1 9 2 8 3 7 4 6 5] quicksort .
+  [5 6 4 7 3 8 2 9 1] quicksort .
+  [1 2 3 4 5 6 7 8 9] quicksort .
+  [9 8 7 6 5 4 3 2 1] quicksort .
 
 (* now look at the definition of quicksort: *)
-[ [quicksort] definition putln ]
+  [quicksort] definition .
 
 (* sorting lists on first item *)
-[ [ [1 Smith] [3 Jones] [2 Robinson] [4 Brown] ]
-  quicksort1 putln ]
+  [ [1 Smith] [3 Jones] [2 Robinson] [4 Brown] ]
+  quicksort1 .
 (* sorting on symbol *)
-[ [] ]  (* initial class-list in COMPUTATIONAL CHRONOSCOPY *)
-[ [NURKS Peter 1989 year 3 major Computer Science ]     cnos
-  [ABELSON Mary 1990 year 2 major Logic ]               cnos
+  []    (* initial class-list in COMPUTATIONAL CHRONOSCOPY *)
+  [NURKS Peter 1989 year 3 major Computer Science]      cnos
+  [ABELSON Mary 1990 year 2 major Logic]                cnos
   [ZEEMAN Fred 1988 year 2 major Accounting]            cnos
-  [MORRIS Janna 1992 year 1 major undecided]            cnos ]
+  [MORRIS Janna 1992 year 1 major undecided]            cnos
 (* now sort on surname and print *)
-[ quicksort1 dup [putln] step ]
+  quicksort1 dup [putln] step pop .

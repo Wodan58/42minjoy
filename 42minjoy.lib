@@ -23,7 +23,7 @@ I1 I2	=		==  B		where B	 =  (I1 = I2)	 *
 	>		==  swap <				 ;
 	>=		==  pred >				 ;
 								(*
-	addlist		==  [+] zip				 ;
+	addlist		==  [+] zip				 *
 								(*
 B1 B2	and		==  B3		where B3 = (B1 and B2)	 *
 								 *)
