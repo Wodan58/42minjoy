@@ -1,4 +1,4 @@
-%LISTING 1
+%LISTING 9
 (*
                 J O Y   T U T O R I A L
 
@@ -9,51 +9,51 @@ of any type is a value of type list.
 *)
 
 (* push two numbers onto stack, add them, write result *)
-[  111  222  +  put  ]
+   111  222  +  .
 (* add two numbers, add another two numbers, write product *)
-[  1  2  +  3  4  +  *  put  ]
+   1  2  +  3  4  +  *  .
 (* testing whether 2 + 2  =  2 * 2 *)
-[  2  2  +  2  2  *  =  put  ]
+   2  2  +  2  2  *  =  .
 (* testing whether  6 * 6  >  5 * 7  *)
-[  6  6  *  5  7  *  >  put  ]
+   6  6  *  5  7  *  >  .
 (* Boolean operations *)
-[  true  false  or  true  and  not  put  ]
+   true  false  or  true  and  not  .
 
 (* LISTS *)
 
 (* push a list of numbers, reverse it, write result *)
-[  [1 2 3 4 5]  reverse  put  ]
+   [1 2 3 4 5]  reverse  .
 (* push two lists of symbols, concatenate, write result *)
-[  [peter paul]  [mary jane]  concat  put  ]
+   [peter paul]  [mary jane]  concat  .
 (* push a list of mixed values, write its last element *)
-[  [11 false 'X 44]  last  put  ]
+   [11 false 'X 44]  last  .
 (* push a number and a list, determine membership *)
-[  3  [1 5 3 4 2] member put  ]
+   3  [1 5 3 4 2] member .
 (* similar *)
-[  3  [1 5 6 4 2] member put  ]
+   3  [1 5 6 4 2] member .
 (* push a list of numbers, duplicate to  find sum and product *)
-[  [1 2 3 4]  dup    sum put    space put    product put  ]
+   [1 2 3 4]  dup    sum put    space put    product .
 (* push a number and a list of numbers, cons together *)
-[  111  [ 222 333 ]  cons  put  ]
+   111  [ 222 333 ]  cons  .
 (* push a list, uncons twice, write remainder and first two *)
-[  [11 22 33 44 55]  uncons  uncons  putsp putsp putsp  ]
+   [11 22 33 44 55]  uncons  uncons  putsp putsp .
 (* push two lists of characters, concatenate them *)
-[  [ 'a 'b ]  [ 'd 'e 'f ]  concat  ]
+   [ 'a 'b ]  [ 'd 'e 'f ]  concat
 (* now write result, but dup first so list is not lost *)
-[  dup  put  ]
+   dup  .
 (* insert the missing 'c *)
-[  uncons uncons 'c swap cons cons cons ]
+   uncons uncons 'c swap cons cons cons
 (* now check *)
-[  dup  put  ]
+   dup  .
 (* what is its length ? *)
-[  dup  length  put  ]
+   dup  length  .
 (* reverse it, write its length *)
-[  reverse  length  put  ]
+   reverse  length  .
 (* So, the length of a list is also the length of its reverse:
                 length  ==  reverse length
 *)
 (* INPUT from terminal or input file *)
-[ get get + put ]
+  get get + .
   123   456
 (* COMBINATORS *)
 
@@ -62,55 +62,55 @@ Combinators are operations which expect a list on top
 of the stack and then execute it as a program.
 *)
 (* push two numbers and a program, i-combinator to execute *)
-[  111  222  [+ put]  i  ]
+   111  222  [+ put]  i  .
 (* i-combinator to execute [+ put] on top of stack *)
-[  111  [put +]  reverse  222  swap  i  ]
+   111  [put +]  reverse  222  swap  i  .
 (* dip-combinator to multiply 3 and 7, then add 100 *)
-[  3  7  100  [*]  dip  +  put  ]
+   3  7  100  [*]  dip  +  .
 (* step-combinator to apply program to each member of list *)
-[  [1 2 3]  [dup * putsp]  step  ]
+   [1 2 3]  [dup * putsp]  step  .
 
 (* i-combinator, twice-combinator, thrice-combinator *)
-[  2  [dup *]  i  put  ]
-[  2  [dup *]  twice  put  ]
-[  2  [dup *]  thrice  put ]
+   2  [dup *]  i  .
+   2  [dup *]  twice  .
+   2  [dup *]  thrice  .
 (* times-combinator, using definition square  ==  dup *   *)
-[  2  [square]  0 times  put  ]
-[  2  [square]  1 times  put  ]
-[  2  [square]  2 times  put  ]
-[  2  [square]  3 times  put  ]
-[  2  [square]  4 times  put  ]
-[  2  [square]  5 times  put  ] (* note overflow *)
-[  [7]  10 times  stack  put  ]
+   2  0  [square]  times  .
+   2  1  [square]  times  .
+   2  2  [square]  times  .
+   2  3  [square]  times  .
+   2  4  [square]  times  .
+   2  5  [square]  times  . (* note overflow *)
+   10  [7]  times  stack  .
 
 (* map-combinator to make list of squares *)
-[  [1 2 3]  [dup *]  map  put  ]
+   [1 2 3]  [dup *]  map  .
 (* fold-combinator to add squares of members of list *)
-[  [1 2 3]  0  [dup * +]  fold  put  ]
+   [1 2 3]  0  [dup * +]  fold  .
 (* construct-combinator to make list from programs *)
-[ 11 12                         (* push two numbers             *)
+  11 12                         (* push two numbers             *)
   [                             (* make a list of ..            *)
     [+]                         (*  their sum                   *)
     [*]                         (*  their product               *)
     [pop unit]                  (*  the unit list of first      *)
     [dup pair] ]                (*  the pair of the second      *)
-  construct2 put ]
+  construct2 .
 (* the two numbers are still there *)
-[ [                             (* make a list of ..            *)
+  [                             (* make a list of ..            *)
     [pair [square] map unpair +](*  the sum of their squares    *)
     [pop]                       (*  the first number            *)
     [] ]                        (*  the second number           *)
-  construct2 put ]
+  construct2 .
 (* now clear the stack *)
-[  [] unstack ]
+   [] unstack .
 
 (* DIRECTIVES *)
 
-%INCLUDE 42minjoy.in1
+%INCLUDE ../42minjoy.in1
 (* back to original line numbering *)
 
-%INCLUDE 42minjoy.in2
+%INCLUDE ../42minjoy.in2
 
 %STATISTICS 1
 (* end of JOY tutorial *)
-.
+1 2 +.

@@ -1,14 +1,18 @@
 #
 #   module  : CMakeLists.txt
-#   version : 1.5
-#   date    : 01/22/24
+#   version : 1.6
+#   date    : 04/19/24
 #
 cmake_minimum_required(VERSION 3.0)
 project(42minjoy VERSION 1.0)
 if("${CMAKE_BUILD_TYPE}" STREQUAL "")
-  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE "Release")
 endif()
-option(RUN_TESTS "Run standard tests" ON)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+  option(RUN_TESTS "Run standard tests" ON)
+else()
+  option(RUN_TESTS "Run standard tests" OFF)
+endif()
 if(WIN32)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()

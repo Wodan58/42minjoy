@@ -1,13 +1,20 @@
 (*  vi: filetype=joy
+
+    module  : 42minjoy.lib
+    version : 1.6
+    date    : 04/19/24
+
     Set F to 1 : include definition for fib
     Set F to 0 : exclude definition for fib
+
+    P is set to 3: the library is read only once.
 *)
 %SET F = 1
 
-%IF  = P 0  %SET  P = 1
+%IF  = P 0  %SET  P = 3
 %IF  = P 1  %PUT First pass through library:
 %IF  = P 2  %PUT Second pass through library:
-
+%IF  = P 3  %PUT Single pass through library:
 								(*
 I1 I2	*		==  I3		where I3 = (I1 * I2)	 *
 I1 I2	+		==  I3		where I3 = (I1 + I2)	 *
@@ -15,6 +22,7 @@ I1 I2	-		==  I3		where I3 = (I1 - I2)	 *
 I1 I2	/		==  I3		where I3 = (I1 / I2)	 *
 I1 I2	<		==  B		where B	 = (I1 < I2)	 *
 								 *)
+	!=		==  = not				 ;
 	<=		==  succ <				 ;
 	<>		==  = not				 ;
 								(*
@@ -33,6 +41,7 @@ B1 B2	and		==  B3		where B3 = (B1 and B2)	 *
 	c		==  [swap] dip i			 ;
 	car		==  uncons pop				 ;
 	cdr		==  uncons swap pop			 ;
+	char		==  'A sametype				 ;
 	clearstack	==  [] unstack				 ;
 	clearstack1	==  [clearstack] dip			 ;
 	cnos		==  swap cons				 ;
@@ -44,7 +53,7 @@ nothing [Xs] cons	==  [Xs]				 *
 	construct0	==  [dip swap] map			 ;
 	construct1	==  [[dip swap] map] unary		 ;
 	construct2	==  [[nullary] cons dip swap] map	 ;
-	contains	==  false swap [ = or] cons fold 	 ;
+	contains	==  false swap [= or] cons fold 	 ;
 	cube		==  dup dup * *				 ;
 	definition	==  first body				 ;
 								(*
@@ -55,7 +64,18 @@ X [Fs]	dip		==  Fs X				 *
 								(*
 X	dup		==  X X					 *
 								 *)
+	dupd		==  [dup] dip				 ;
 	dureco		==  dup rest cons			 ;
+								(*
+Lists must be tested with equal. Empty lists can be tested with  *
+=. Members of a list are compared with =. Equal can be used      *
+instead of = in case it is unknown whether one or the other of   *
+the two operands might be a list.				 *
+								 *)
+	equal		==  dup [] sametype [[=] [dup [] =
+			    [[[uncons] dip swap [uncons] dip
+			    cons [equal] dip uncons equal and]
+			    [=]] of i]] of i			 ;
 	exp		==  dup 0 =
 			    [pop pop 1] [[dup] dip 1 - exp *]
 			    branch				 ;
@@ -88,9 +108,11 @@ X	dup		==  X X					 *
 	k		==  [pop] dip i				 ;
 	last		==  dup rest null
 			    [first] [rest last] branch		 ;
+	leaf		==  list not				 ;
 	length		==  0 [pop 1 +] fold			 ;
 	lengthold	==  0 swap [pop 1 +] step		 ;
 	list		==  [] sametype				 ;
+	logical		==  false sametype			 ;
 	map		==  maprev reverse			 ;
 	maprev		==  [] rollup shuntmap			 ;
 	member		==  swap contains			 ;
@@ -109,9 +131,10 @@ B1      not		==  B2	  where B2 = not B1		 *
 								(*
 B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
 								 *)
+	over		==  [dup] dip swap			 ;
 	pair		==  [] cons cons			 ;
-	pairlists       ==  [pair] zip				 ;
-	partition       ==  [[][]] dip
+	pairlists	==  [pair] zip				 ;
+	partition	==  [[][]] dip
 			    dup
 			    [ first >
 			      [cnos]
@@ -120,7 +143,7 @@ B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
 			    cons
 			    [dup] first cnos
 			    step				 ;
-	partition1      ==  [[][]] dip
+	partition1	==  [[][]] dip
 			    dup first
 			    [ first >
 			      [cnos]
@@ -133,6 +156,7 @@ B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
 								(*
 X       pop		==					 *
 								 *)
+	popd		==  [pop] dip				 ;
 	pred		==  1 -					 ;
 	product		==  1 [*] fold				 ;
 	putln		==  put newline				 ;
@@ -144,18 +168,19 @@ X       pop		==					 *
 				     quicksort both,
 				     concatenate them
 								*)
-	quicksort       ==  dup small
+	quicksort	==  dup small
 			    []
 			    [ partition
 			      quicksort [quicksort] dip
 			      concat ]
 			    branch				 ;
-	quicksort1      ==  dup small
+	quicksort1	==  dup small
 			    []
 			    [ partition1
 			      quicksort1 [quicksort1] dip
 			      concat ]
 			    branch				 ;
+	rem		==  over over / * -			 ;
 	rest		==  uncons swap pop			 ;
 	reverse		==  [] swap shunt			 ;
 	rmap		==  [] swap [[swap cons] b] cons fold    ;
@@ -167,12 +192,13 @@ X       pop		==					 *
 
 	shunt		==  [cnos] step			 	 ;
 	shuntmap	==  [[cnos] b] cons step		 ;
+	size		==  0 [pop succ] fold			 ;
 (*
 	small		==  uncons null swap pop		 *
 *)
 	small		==  dup null [[rest null] [pop true]]
 			    of i				 ;
-	solostack       ==  stack [clearstack] dip		 ;
+	solostack	==  stack [clearstack] dip		 ;
 	space		==  '\32	(* one space *)		 ;
 	square		==  dup *				 ;
 	succ		==  1 +					 ;
@@ -181,10 +207,13 @@ X       pop		==					 *
 								(*
 X Y	swap		==  Y X					 *
 								 *)
+	swapd		==  [swap] dip				 ;
 	thrice		==  dup [twice] dip i			 ;
-	times		==  dup 0 =
+	times		==  swap times_				 ;
+	times_		==  dup 0 =
 			    [pop pop]
-			    [[dup [i] dip] dip pred times] branch;
+			    [[dup [i] dip] dip pred times_]
+			    branch				 ;
 	twice		==  dup b				 ;
 	unary		==  nullary [pop] dip			 ;
 								(*
@@ -193,6 +222,7 @@ X Y	swap		==  Y X					 *
 								 *)
 	unit		==  [] cons				 ;
 	unpair		==  uncons uncons pop			 ;
+	user		==  [zzz] first sametype		 ;
 	w		==  [dup] dip i				 ;
 	x		==  dup i				 ;
 	y		==  fix i				 ;

@@ -1,3 +1,8 @@
+(*
+    module  : tutorial.joy
+    version : 1.2
+    date    : 04/19/24
+*)
 %LISTING 1
 (*
                 J O Y   T U T O R I A L
@@ -36,7 +41,7 @@ of any type is a value of type list.
 (* push a number and a list of numbers, cons together *)
    111  [ 222 333 ]  cons  .
 (* push a list, uncons twice, write remainder and first two *)
-   [11 22 33 44 55]  uncons  uncons  putsp putsp putsp
+   [11 22 33 44 55]  uncons  uncons  putsp putsp .
 (* push two lists of characters, concatenate them *)
    [ 'a 'b ]  [ 'd 'e 'f ]  concat
 (* now write result, but dup first so list is not lost *)
@@ -75,13 +80,13 @@ of the stack and then execute it as a program.
    2  [dup *]  twice  .
    2  [dup *]  thrice  .
 (* times-combinator, using definition square  ==  dup *   *)
-   2  [square]  0 times  .
-   2  [square]  1 times  .
-   2  [square]  2 times  .
-   2  [square]  3 times  .
-   2  [square]  4 times  .
-   2  [square]  5 times  . (* note overflow *)
-   [7]  10 times  stack  .
+   2  0  [square]  times  .
+   2  1  [square]  times  .
+   2  2  [square]  times  .
+   2  3  [square]  times  .
+   2  4  [square]  times  .
+   2  5  [square]  times  . (* note overflow *)
+   10  [7]  times  stack  .
 
 (* map-combinator to make list of squares *)
    [1 2 3]  [dup *]  map  .

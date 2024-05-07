@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.36
-    date    : 04/12/24
+    version : 1.38
+    date    : 05/06/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -23,6 +23,9 @@
 #define OBSOLETE_NOTHING
 #define RENAME_INDEX
 #define RENAME_SELECT
+#if 0
+#define ADD_SETAUTOPUT
+#endif
 
 #ifdef DEBUG
 int debug = 1;
@@ -44,15 +47,9 @@ typedef unsigned char boolean;
 #define list_filename	"42minjoy.lst"
 
 #define reslength	8
-#if 0
-#define emptyres	"        "
-#endif
 #define maxrestab	10
 
 #define identlength	16
-#if 0
-#define emptyident	"                "
-#endif
 #define maxstdidenttab	32
 
 typedef enum {
@@ -82,9 +79,26 @@ typedef enum {
 #ifndef RENAME_SELECT
     select_,
 #endif
+#ifdef ADD_SETAUTOPUT
+    setautoput_,
+#endif
     stack_, step_, swap_, true_,
     uncons_, unstack_, boolean_, char_, integer_, list_, unknownident
 } standardident;
+
+/*
+ * pathname of the joy binary, to be used as prefix to library files. That way
+ * it is not necessary to copy all library files to all working directories.
+ */
+char *pathname;
+
+/*
+ * autoput controls whether automatic output of the TOS is required. Initially
+ * it is set to 1, but it can be turned off with the setautoput instruction.
+ * This is not a directive, because it has to be similar to the full version of
+ * Joy.
+ */
+int autoput = 1;
 
 #define MINJOY
 #include "scanutil.c"
@@ -101,48 +115,51 @@ static void initialise(void)
     erw("==",	def_equal);
     erw("[",	lbrack);
     erw("]",	rbrack);
-    est("*",        mul_);
-    est("+",        add_);
-    est("-",        sub_);
-    est("/",        div_);
-    est("<",        lss_);
-    est("=",        eql_);
-    est("and",      and_);
-    est("body",     body_);
-    est("cons",     cons_);
-    est("dip",      dip_);
-    est("dup",      dup_);
-    est("false",    false_);
-    est("get",      get_);
-    est("getch",    getch_);
-    est("i",        i_);
+    est("*",          mul_);
+    est("+",          add_);
+    est("-",          sub_);
+    est("/",          div_);
+    est("<",          lss_);
+    est("=",          eql_);
+    est("and",        and_);
+    est("body",       body_);
+    est("cons",       cons_);
+    est("dip",        dip_);
+    est("dup",        dup_);
+    est("false",      false_);
+    est("get",        get_);
+    est("getch",      getch_);
+    est("i",          i_);
 #ifndef RENAME_INDEX
-    est("index",    index_);
+    est("index",      index_);
 #endif
-    est("not",      not_);
+    est("not",        not_);
 #ifndef OBSOLETE_NOTHING
-    est("nothing",  nothing_);
+    est("nothing",    nothing_);
 #endif
 #ifdef RENAME_INDEX
-    est("of",       of_);
+    est("of",         of_);
 #endif
 #ifdef RENAME_SELECT
-    est("opcase",   opcase_);
+    est("opcase",     opcase_);
 #endif
-    est("or",       or_);
-    est("pop",      pop_);
-    est("put",      put_);
-    est("putch",    putch_);
-    est("sametype", sametype_);
+    est("or",         or_);
+    est("pop",        pop_);
+    est("put",        put_);
+    est("putch",      putch_);
+    est("sametype",   sametype_);
 #ifndef RENAME_SELECT
-    est("select",   select_);
+    est("select",     select_);
 #endif
-    est("stack",    stack_);
-    est("step",     step_);
-    est("swap",     swap_);
-    est("true",     true_);
-    est("uncons",   uncons_);
-    est("unstack",  unstack_);
+#ifdef ADD_SETAUTOPUT
+    est("setautoput", setautoput_);
+#endif
+    est("stack",      stack_);
+    est("step",       step_);
+    est("swap",       swap_);
+    est("true",       true_);
+    est("uncons",     uncons_);
+    est("unstack",    unstack_);
     for (i = mul_; i <= unstack_; i++)
 	if (i != stdidents[i].symb)
 	    point('F', "bad order in standard idents");
@@ -201,6 +218,9 @@ static char *standardident_NAMES[] = {
     "or", "pop", "put", "putch", "sametype",
 #ifndef RENAME_SELECT
     "select",
+#endif
+#ifdef ADD_SETAUTOPUT
+    "setautoput",
 #endif
     "stack", "step", "swap", "true",
     "uncons", "unstack", "BOOLEAN", "CHAR", "INTEGER", "LIST", "UNKNOWN"
@@ -586,10 +606,11 @@ static void patchfactor(memrange n)
 
 static void readlibrary(char *str)
 {
-    int loc;
 #ifdef READ_LIBRARY_ONCE
     FILE *fp;
 #endif
+    char *lib;
+    int loc, must_free = 0;
 
     LOGFILE(__func__);
 #if 0
@@ -599,10 +620,30 @@ static void readlibrary(char *str)
     /*
      * Check that the library file is present. If not, this should not be a
      * fatal error. Some global variables need to be set in case that happens.
+     * If the library is not present in the current directory, but is present
+     * in the same directory as the joy binary, it is read from there. This
+     * also applies to files that are included in the library.
      */
     lastlibloc = 0;
 #ifdef READ_LIBRARY_ONCE
     if ((fp = fopen(str, "r")) == NULL) {
+	/*
+	 * Prepend the pathname and try again. The library files are expected
+	 * to exist somewhere.
+	 */
+	if (pathname) {
+	    loc = strlen(pathname) + strlen(str) + 1;
+	    lib = malloc(loc);
+	    sprintf(lib, "%s%s", pathname, str);
+	    if ((fp = fopen(lib, "r")) == NULL) {
+		free(lib);
+		goto failed;
+	    }
+	    str = lib;
+	    must_free = 1;	/* str must be given to free */
+	    goto done;
+	}
+failed:
 	firstusernode = freelist;
 	cc = ll;
 	sentinel = lastlibloc + 1;
@@ -610,6 +651,12 @@ static void readlibrary(char *str)
 	adjustment = 0;
 	return;
     }
+done:
+    /*
+     * The file was checked to exist. It is now closed, to be reopened again
+     * in newfile. It is possible that str now has a pathname prepended. That
+     * pathname should also be used in subsequent opens of newfile.
+     */
     fclose(fp);
 #endif
     newfile(str, 1);
@@ -687,6 +734,8 @@ static void readlibrary(char *str)
 #else
     adjustment = -2;  /* back to file "input" */
 #endif
+    if (must_free)
+	free(str);
 }  /* readlibrary */
 
 static jmp_buf JL10;
@@ -812,11 +861,11 @@ static void joy(memrange nod)
 	    break;
 
 	case add_:
-	    binary(integer_, i(n(s)) + i(s));
+	    binary(integer_, v(n(s)) + i(s));	/* add integer to character */
 	    break;
 
 	case sub_:
-	    binary(integer_, i(n(s)) - i(s));
+	    binary(integer_, v(n(s)) - i(s));	/* subtract integer from char */
 	    break;
 
 	case div_:
@@ -894,6 +943,13 @@ static void joy(memrange nod)
 	case body_:
 	    s = kons(list_, table[v(s)].adr, n(s));
 	    break;
+
+#ifdef ADD_SETAUTOPUT
+	case setautoput_:
+	    autoput = v(s);
+	    s = n(s);
+	    break;
+#endif
 
 	case put_:
 	    writefactor(s, false);
@@ -994,6 +1050,7 @@ int main(int argc, char *argv[])
 {  /* main */
     memrange i;
     int j;
+    char *ptr;
 
     LOGFILE(__func__);
     start_clock = clock();
@@ -1012,6 +1069,15 @@ int main(int argc, char *argv[])
     stat_calls = 0;
     sentinel = 0;
     firstusernode = 0;
+    /*
+     * Extract the pathname from the joy binary.
+     */
+    if ((ptr = strrchr(argv[0], '/')) != 0) {
+	j = ptr - argv[0];
+	pathname = malloc(j + 2);
+	strncpy(pathname, argv[0], j + 1);
+	pathname[j + 1] = 0;
+    }
     /*
      * The library is 42minjoy.lib. If not present, only programs can be used,
      * no definitions.
@@ -1032,11 +1098,13 @@ int main(int argc, char *argv[])
     DumpM();
 #endif
     /*
-     * A filename parameter is possible; it contains programs to be executed.
+     * A filename parameter is possible: it contains programs to be executed.
      * The file replaces standard input.
      */
     if (argc > 1)
 	newfile(argv[1], 0);
+    if (pathname)
+	free(pathname);
     setjmp(JL10);
     while (1) {
 	getsym();
@@ -1058,9 +1126,10 @@ int main(int argc, char *argv[])
 	outlinelength = 0;
 	joy(programme);
 	/*
-	 * Add automatic output of TOS and a newline.
+	 * Add automatic output of TOS and a newline. This under the control of
+	 * the autoput flag.
 	 */
-	if (s) {
+	if (s && autoput) {
 	    writefactor(s, true);
 	    s = n(s);
 	}

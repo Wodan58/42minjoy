@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.8
-    date    : 04/11/24
+    version : 1.9
+    date    : 04/19/24
 */
 /* File: Included file for scan utilities */
 
@@ -12,9 +12,6 @@
 #define linenumspace	  "    "
 #define linenumsep	  "    "
 #define underliner	  "****    "
-#if 0
-#define tab_in_listing	  "    ----    "
-#endif
 
 #define maxoutlinelength  60
 #define messagelength	  30
@@ -24,7 +21,6 @@
 #if 0
 #define maxchartab	  1000
 #define maxstringtab	  100
-#define maxnodtab	  1000
 #endif
 
 typedef char identalfa[identlength + 1];
@@ -164,10 +160,10 @@ static void iniscanner(void)
     ll = 1; /* to enable fatal message during initialisation */
     memset(specials_repeat, 0, sizeof(specials_repeat)); /* def: no repeats */
     includelevel = 0;
-    /*
-     * Initial input file is stdin.
-     */
 #if 0
+    /*
+     * Initial input file is stdin. This is not stored in the inputs table.
+     */
     inputs[0].fil = stdin;
     strcpy(inputs[0].nam, "stdin");
     inputs[0].lastlinenumber = 1;
@@ -182,21 +178,21 @@ static void iniscanner(void)
     must_repeat_line = false;
 } /* iniscanner */
 
-static void erw(char *a, symbol symb)
+static void erw(char *str, symbol symb)
 {
     if (++lastresword > maxrestab)
 	point('F', "too many reserved words");
-    strncpy(reswords[lastresword].alf, a, reslength);
+    strncpy(reswords[lastresword].alf, str, reslength);
     reswords[lastresword].alf[reslength] = 0;
     reswords[lastresword].symb = symb;
 } /* erw */
 
 #if defined(MINPAS) || defined(MINJOY)
-static void est(char *a, standardident symb)
+static void est(char *str, standardident symb)
 {
     if (++laststdident > maxstdidenttab)
 	point('F', "too many identifiers");
-    strncpy(stdidents[laststdident].alf, a, identlength);
+    strncpy(stdidents[laststdident].alf, str, identlength);
     stdidents[laststdident].alf[identlength] = 0;
     stdidents[laststdident].symb = symb;
 } /* est */
@@ -213,40 +209,59 @@ static void release(void)
 	}
 }
 
-static void newfile(char *a, int flag)
+static void newfile(char *str, int flag)
 {
     static unsigned char init;
+    FILE *fp;
+    char *ptr;
 
     if (!init) {
 	init = 1;
 	atexit(release);
     }
     if (!flag) {
-	if (!freopen(a, "r", stdin)) {
-	    fprintf(stderr, "%s (not open for reading)\n", a);
+	if (!freopen(str, "r", stdin)) {
+	    fprintf(stderr, "%s (not open for reading)\n", str);
 	    exit(0);
 	}
 	adjustment = 0;
 	return;
     }
-    strcpy(inputs[includelevel].nam, a);
+    /*
+     * str may contain a pathname. The pathname must be stripped, because
+     * identlength is not large enough to hold a pathname. The name is only
+     * used in error messages and does not need a pathname.
+     */
+    if ((ptr = strrchr(str, '/')) != 0)
+	ptr++;
+    else
+	ptr = str;
+    strncpy(inputs[includelevel].nam, ptr, identlength);
     inputs[includelevel].lastlinenumber = linenumber;
-    if (inputs[includelevel].fil != NULL) {
-	fclose(inputs[includelevel].fil);
-	inputs[includelevel].fil = NULL;
+    if ((fp = fopen(str, "r")) == NULL) {
+	/*
+	 * If the include file does not contain a pathname yet, the pathname
+	 * is prepended and the open is tried again. If that also fails, the
+	 * program fails. Pathname itself is a global variable.
+	 */
+	if (ptr == str) {
+	    flag = strlen(pathname) + strlen(str) + 1;
+	    ptr = malloc(flag);
+	    sprintf(ptr, "%s%s", pathname, str);
+	    fp = fopen(ptr, "r");
+	    free(ptr);
+	}
+	if (!fp) {
+	    fprintf(stderr, "%s (not open for reading)\n", str);
+	    exit(0);
+	}
     }
-    if ((inputs[includelevel].fil = fopen(a, "r")) == NULL) {
-	fprintf(stderr, "%s (not open for reading)\n", a);
-	exit(0);
-    }
+    inputs[includelevel].fil = fp;
     adjustment = 1;
 } /* newfile */
 
 static void getsym(void);
 
-#if 0
-#define emptydir "                "
-#endif
 #define dirlength	16
 
 static void perhapslisting(void)
@@ -265,9 +280,6 @@ static void perhapslisting(void)
 
 static void getch(void)
 {
-#if 0
-    int c;
-#endif
     FILE *f;
     char *ptr;
 
@@ -284,7 +296,6 @@ static void getch(void)
 	ll = 0;
 	cc = 0;
 	if (!includelevel) {
-#if 1
 	    if (fgets(line, maxlinelength, stdin)) {
 		if ((ptr = strchr(line, '\n')) != 0)
 		    *ptr = 0;
@@ -292,38 +303,18 @@ static void getch(void)
 		perhapslisting();
 	    } else
 		exit(0);
-#else
-	    while ((c = getchar()) != EOF && c != '\n')
-		if (ll < maxlinelength && c != '\r')
-		    line[ll++] = c;
-	    if (c == EOF)
-		point('F', "unexpected end of file");
-	    perhapslisting();
-#endif
 	} else {
 	    f = inputs[includelevel - 1].fil;
-#if 1
 	    if (fgets(line, maxlinelength, f)) {
 		if ((ptr = strchr(line, '\n')) != 0)
 		    *ptr = 0;
 		ll = strlen(line);
 		perhapslisting();
 	    } else {
-#else
-	    while ((c = getc(f)) != EOF && c != '\n')
-		if (ll < maxlinelength && c != '\r')
-		    line[ll++] = c;
-	    if (c == EOF) {
-		c = 0;
-#endif
 		fclose(f);
 		inputs[includelevel - 1].fil = NULL;
 		adjustment = -1;
 	    }
-#if 0
-	      else
-		perhapslisting();
-#endif
 	}
 	line[ll++] = ' ';
     } /* IF */
@@ -345,9 +336,6 @@ static long value(void)
     }
     if (isupper(ch)) {
 	result = scantimevariables[ch - 'A'];
-#if 0
-	getsym();
-#endif
 	goto einde;
     }
     if (ch == '(') {
@@ -412,9 +400,6 @@ static void directive(void)
 
     getch();
     i = 0;
-#if 0
-    strncpy(dir, emptydir, dirlength);
-#endif
     do {
 	if (i < dirlength)
 	    dir[i++] = ch;
@@ -430,9 +415,6 @@ static void directive(void)
 	while (ch <= ' ')
 	    getch();
 	i = 0;
-#if 0
-	strncpy(ident, emptyident, identlength);
-#endif
 	do {
 	    if (i < identlength)
 		ident[i++] = ch;
@@ -476,21 +458,16 @@ static void directive(void)
     getch();
 } /* directive */
 
-#if 0
-#undef emptydir
-#undef dirlength
-#endif
-
 static void getsym(void)
 {
 #if 0
     char c;
 #endif
-    int i, j, k;
     bool negated;
+    int i, j, k, index;
 
 begin:
-    ident[i = 0] = 0;
+    ident[index = 0] = 0;	/* start with empty ident and index at 0 */
     while (ch <= ' ')
 	getch();
     switch (ch) {
@@ -503,7 +480,7 @@ begin:
 	    getch();
 	}
 #ifndef MINJOY
-	if (ch == '\'')
+	if (ch == '\'')		/* no optional closing quote */
 	    getch();
 #endif
 	sym = charconst;
@@ -563,13 +540,8 @@ begin:
 	else {
 	    getch();
 	    if (!isdigit(ch)) {
-#if 0
-		strncpy(res, emptyres, reslength);
-		strncpy(ident, emptyident, identlength);
-#endif
-		ident[i++] = '-';
-		ident[i] = 0;
-		/* sym = hyphen; */
+		ident[index++] = '-';
+		ident[index] = 0;
 		goto einde;
 	    }
 	    negated = true;
@@ -598,96 +570,59 @@ begin:
 	}
 	break;
 
-#ifdef MINJOY
-    case '!':
-    case '$':
-    case ',':
-    case ':':
-    case '?':
-    case '@':
-    case '\\':
-    case '^':
-    case '_':
-    case '`':
-    case '|':
-    case '~':
-#endif
-    case 'a':
-    case 'b':
-    case 'c':
-    case 'd':
-    case 'e':
-    case 'f':
-    case 'g':
-    case 'h':
-    case 'i':
-    case 'j':
-    case 'k':
-    case 'l':
-    case 'm':
-    case 'n':
-    case 'o':
-    case 'p':
-    case 'q':
-    case 'r':
-    case 's':
-    case 't':
-    case 'u':
-    case 'v':
-    case 'w':
-    case 'x':
-    case 'y':
-    case 'z':
-	sym = identifier;
-	i = 0;
-#if 0
-	strncpy(ident, emptyident, identlength);
-#endif
-	do {
-	    if (i < identlength)
-		ident[i++] = ch;
-	    getch();
-	} while (ch == '_' || isalnum(ch));
-	ident[i] = 0;
-	break;
-
     case '%':
 	directive();
 	goto begin;
 
     default:
-	i = 0;
-#if 0
-	strncpy(res, emptyres, reslength);
-	strncpy(ident, emptyident, identlength);
-#endif
-einde:
-	if (isupper(ch))
+	if (ch == '_' || isalnum(ch))
+	    goto einde;
+	if (ch > ' ') {
+	    /*
+	     * A special character has been read that may be a reserved word
+	     * or it may be the start of an identifier. The table of reserved
+	     * words is searched after reading each character.
+	     */
+again:		    
+	    if (index < identlength)
+		ident[index++] = ch;
+	    getch();
+	    ident[index] = 0;
+	    i = 1;
+	    j = lastresword;
 	    do {
-		if (i < identlength)
-		    ident[i++] = ch;
-		getch();
-	    } while (ch == '_' || isalnum(ch));
-	else if (ch > ' ')
-	    do {
-		if (i < identlength)
-		    ident[i++] = ch;
-		getch();
-	    } while (strchr(specials_repeat, ch));
-	ident[i] = 0;
-	i = 1;
-	j = lastresword;
-	do {
-	    k = (i + j) / 2;
-	    if (strcmp(ident, reswords[k].alf) <= 0)
-		j = k - 1;
-	    if (strcmp(ident, reswords[k].alf) >= 0)
-		i = k + 1;
-	} while (i <= j);
-	if (i - 1 > j) /* OTHERWISE */
-	    sym = reswords[k].symb;
-	else
-	    sym = identifier;
+		k = (i + j) / 2;
+		if (strcmp(ident, reswords[k].alf) <= 0)
+		    j = k - 1;
+		if (strcmp(ident, reswords[k].alf) >= 0)
+		    i = k + 1;
+	    } while (i <= j);
+	    if (i - 1 > j)
+		sym = reswords[k].symb;
+	    else {
+		/*
+		 * A reserved word was not recognized, but a special character
+		 * was read. In that case, add the character to the word and
+		 * try again to recognize a reserved word.
+		 */
+		if (strchr(specials_repeat, ch))
+		    goto again;
+		/*
+		 * No second special character was read. It is still possible
+		 * to build an identifier that starts with one special char.
+		 */
+einde:		
+		if (ch == '_' || isalnum(ch)) {
+		    do {
+			if (index < identlength)
+			    ident[index++] = ch;
+			getch();
+		    } while (ch == '_' || isalnum(ch));
+		}
+		ident[index] = 0;
+		sym = identifier;
+	    }
+	}
 	break;
     } /* CASE */
 } /* getsym */
@@ -748,34 +683,28 @@ static void writeline(void)
     outlinelength = 0;
 }
 
-static void writeident(char *a)
+static void writeident(char *str)
 {
     int i, length;
 
-#if 0
-    length = identlength;
-    while (a[length - 1] <= ' ')
-	length--;
-#else
-    length = strlen(a);
-#endif
+    length = strlen(str);
     if (outlinelength + length > maxoutlinelength)
 	writeline();
     for (i = 0; i < length; i++)
-	putch(a[i]);
+	putch(str[i]);
 }
 
 #ifdef DATBAS
-static void writeresword(char *a)
+static void writeresword(char *str)
 {
-    long i, length;
+    int i, length;
 
-    for (length = reslength; length && a[length] <= ' '; length--)
+    for (length = reslength; length && str[length] <= ' '; length--)
 	;
     if (outlinelength + length > maxoutlinelength)
 	writeline();
     for (i = 0; i < length; i++)
-	putch(a[i]);
+	putch(str[i]);
 }
 #endif
 
@@ -806,9 +735,10 @@ static void fin(FILE *f)
     if (errorcount > 0)
 	fprintf(f, "%ld error(s)\n", errorcount);
     lib = end_clock = clock();
-    if ((lib -= start_clock) < 0)
-	lib = 0;
-    fprintf(f, "%.0f milliseconds CPU\n", lib * 1000 / CLOCKS_PER_SEC);
+    if ((lib -= start_clock) > 0) {
+	lib = lib * 1000 / CLOCKS_PER_SEC;
+	fprintf(f, "%.0f milliseconds CPU\n", lib);
+    }
 }
 
 static void finalise(void)
@@ -818,10 +748,6 @@ static void finalise(void)
     fin(stderr);
     if (listing && writelisting > 0)
 	fin(listing);
-#if 0
-    if (listing != NULL)
-	fclose(listing);
-#endif
     /* finalise */
 }
 
