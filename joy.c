@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.38
-    date    : 05/06/24
+    version : 1.39
+    date    : 07/12/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -969,7 +969,7 @@ static void joy(memrange nod)
 
 	case getch_:
 	    getch();
-	    s = kons(integer_, ch, s);
+	    s = kons(integer_, chr, s);
 	    break;
 
 	/* COMBINATORS: */
@@ -1132,6 +1132,7 @@ int main(int argc, char *argv[])
 	if (s && autoput) {
 	    writefactor(s, true);
 	    s = n(s);
+	    fflush(stdout);
 	}
 	if (outlinelength > 0)
 	    writeline();

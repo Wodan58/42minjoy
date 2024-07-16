@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.9
-    date    : 04/19/24
+    version : 1.10
+    date    : 07/12/24
 */
 /* File: Included file for scan utilities */
 
@@ -60,7 +60,7 @@ static long scantimevariables['Z' + 1 - 'A'];
 static long alternative_radix, linenumber;
 static char line[maxlinelength + 1];
 static int cc, ll;
-static int ch;
+static int chr;
 static identalfa ident;
 #if defined(MINPAS) || defined(MINJOY)
 static standardident id;
@@ -154,7 +154,7 @@ static void iniscanner(void)
     }
     atexit(closelisting);
     writelisting = 0;
-    ch = ' ';
+    chr = ' ';
     linenumber = 0;
     cc = 1;
     ll = 1; /* to enable fatal message during initialisation */
@@ -318,7 +318,7 @@ static void getch(void)
 	}
 	line[ll++] = ' ';
     } /* IF */
-    ch = line[cc++];
+    chr = line[cc++];
 } /* getch */
 
 static long value(void)
@@ -328,27 +328,27 @@ static long value(void)
 
     do
 	getch();
-    while (ch <= ' ');
-    if (ch == '\'' || ch == '&' || isdigit(ch)) {
+    while (chr <= ' ');
+    if (chr == '\'' || chr == '&' || isdigit(chr)) {
 	getsym();
 	result = num;
 	goto einde;
     }
-    if (isupper(ch)) {
-	result = scantimevariables[ch - 'A'];
+    if (isupper(chr)) {
+	result = scantimevariables[chr - 'A'];
 	goto einde;
     }
-    if (ch == '(') {
+    if (chr == '(') {
 	result = value();
-	while (ch <= ' ')
+	while (chr <= ' ')
 	    getch();
-	if (ch == ')')
+	if (chr == ')')
 	    getch();
 	else
 	    point('E', "right parenthesis expected");
 	goto einde;
     }
-    switch (ch) {
+    switch (chr) {
     case '+':
 	result = value() + value();
 	break;
@@ -380,12 +380,12 @@ static long value(void)
 	result = value();
 	result = result < value();
 	break;
-
+#if 0
     case '?':
 	if (scanf("%ld", &result) != 1)
 	    result = 0;
 	break;
-
+#endif
     default:
 	point('F', "illegal start of scan expr");
     } /* CASE */
@@ -402,9 +402,9 @@ static void directive(void)
     i = 0;
     do {
 	if (i < dirlength)
-	    dir[i++] = ch;
+	    dir[i++] = chr;
 	getch();
-    } while (ch == '_' || isupper(ch));
+    } while (chr == '_' || isupper(chr));
     dir[i] = 0;
     if (!strcmp(dir, "IF")) {
 	if (value() < 1)
@@ -412,14 +412,14 @@ static void directive(void)
     } else if (!strcmp(dir, "INCLUDE")) {
 	if (includelevel == maxincludelevel)
 	    point('F', "too many include files");
-	while (ch <= ' ')
+	while (chr <= ' ')
 	    getch();
 	i = 0;
 	do {
 	    if (i < identlength)
-		ident[i++] = ch;
+		ident[i++] = chr;
 	    getch();
-	} while (ch > ' ');
+	} while (chr > ' ');
 	ident[i] = 0;
 	newfile(ident, 1);
     } else if (!strcmp(dir, "PUT")) {
@@ -429,15 +429,15 @@ static void directive(void)
 	fputc('\n', stderr);
 	cc = ll;
     } else if (!strcmp(dir, "SET")) {
-	while (ch <= ' ')
+	while (chr <= ' ')
 	    getch();
-	if (!isupper(ch))
+	if (!isupper(chr))
 	    point('E', "\"A\" .. \"Z\" expected");
-	c = ch;
+	c = chr;
 	getch();
-	while (ch <= ' ')
+	while (chr <= ' ')
 	    getch();
-	if (ch != '=')
+	if (chr != '=')
 	    point('E', "\"=\" expected");
 	scantimevariables[c - 'A'] = value();
 #if 0
@@ -468,19 +468,19 @@ static void getsym(void)
 
 begin:
     ident[index = 0] = 0;	/* start with empty ident and index at 0 */
-    while (ch <= ' ')
+    while (chr <= ' ')
 	getch();
-    switch (ch) {
+    switch (chr) {
     case '\'':
 	getch();
-	if (ch == '\\')
+	if (chr == '\\')
 	    num = value();
 	else {
-	    num = ch;
+	    num = chr;
 	    getch();
 	}
 #ifndef MINJOY
-	if (ch == '\'')		/* no optional closing quote */
+	if (chr == '\'')	/* no optional closing quote */
 	    getch();
 #endif
 	sym = charconst;
@@ -511,13 +511,13 @@ begin:
 
     case '(':
 	getch();
-	if (ch == '*') {
+	if (chr == '*') {
 	    getch();
 	    do {
-		while (ch != '*')
+		while (chr != '*')
 		    getch();
 		getch();
-	    } while (ch != ')');
+	    } while (chr != ')');
 	    getch();
 	    goto begin;
 	}
@@ -535,11 +535,11 @@ begin:
     case '7':
     case '8':
     case '9':
-	if (ch != '-')
+	if (chr != '-')
 	    negated = false;
 	else {
 	    getch();
-	    if (!isdigit(ch)) {
+	    if (!isdigit(chr)) {
 		ident[index++] = '-';
 		ident[index] = 0;
 		goto einde;
@@ -549,9 +549,9 @@ begin:
 	sym = numberconst;
 	num = 0;
 	do {
-	    num = num * 10 + ch - '0';
+	    num = num * 10 + chr - '0';
 	    getch();
-	} while (isdigit(ch));
+	} while (isdigit(chr));
 	if (negated)
 	    num = -num;
 	break;
@@ -560,12 +560,12 @@ begin:
 	sym = numberconst;
 	num = 0;
 	getch();
-	while (isdigit(ch) || isupper(ch)) {
-	    if (isupper(ch))
-		ch += '9' - 'A' + 1;
-	    if (ch >= alternative_radix + '0')
+	while (isdigit(chr) || isupper(chr)) {
+	    if (isupper(chr))
+		chr += '9' - 'A' + 1;
+	    if (chr >= alternative_radix + '0')
 		point('E', "exceeding alternative radix");
-	    num = alternative_radix * num + ch - '0';
+	    num = alternative_radix * num + chr - '0';
 	    getch();
 	}
 	break;
@@ -575,9 +575,9 @@ begin:
 	goto begin;
 
     default:
-	if (ch == '_' || isalnum(ch))
+	if (chr == '_' || isalnum(chr))
 	    goto einde;
-	if (ch > ' ') {
+	if (chr > ' ') {
 	    /*
 	     * A special character has been read that may be a reserved word
 	     * or it may be the start of an identifier. The table of reserved
@@ -585,7 +585,7 @@ begin:
 	     */
 again:		    
 	    if (index < identlength)
-		ident[index++] = ch;
+		ident[index++] = chr;
 	    getch();
 	    ident[index] = 0;
 	    i = 1;
@@ -605,19 +605,19 @@ again:
 		 * was read. In that case, add the character to the word and
 		 * try again to recognize a reserved word.
 		 */
-		if (strchr(specials_repeat, ch))
+		if (strchr(specials_repeat, chr))
 		    goto again;
 		/*
 		 * No second special character was read. It is still possible
 		 * to build an identifier that starts with one special char.
 		 */
 einde:		
-		if (ch == '_' || isalnum(ch)) {
+		if (chr == '_' || isalnum(chr)) {
 		    do {
 			if (index < identlength)
-			    ident[index++] = ch;
+			    ident[index++] = chr;
 			getch();
-		    } while (ch == '_' || isalnum(ch));
+		    } while (chr == '_' || isalnum(chr));
 		}
 		ident[index] = 0;
 		sym = identifier;

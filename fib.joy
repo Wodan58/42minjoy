@@ -1,6 +1,4 @@
 (*
     Fibonacci
 *)
-14 fib.
-
-%STATISTICS 1
+35 fib.
