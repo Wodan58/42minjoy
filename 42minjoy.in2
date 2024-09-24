@@ -3,10 +3,10 @@
 (* RECURSIVE FUNCTIONS, non-recursive computation *)
 
 (* "last" is a tail-recursive function *)
-   [ Smith Jones Robinson ]  last  .
+   [ Smith Jones Robinson ]  last .
 (* now let us look at the (recursive) definition of "last" *)
-   [last]  definition  .
-   [ Smith Jones Robinson ]  [last]  definition  i  .
+   [last]  definition .
+   [ Smith Jones Robinson ]  [last]  definition  i .
 (* using the x-combinator *)
    [Smith Jones Robinson]
    [    swap dup rest null

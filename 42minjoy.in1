@@ -6,23 +6,23 @@ begin of include file *)
 %SET  X  =  1
 %IF   =  X  1             11111
 %IF   =  X  2             22222
-   .
+.
 
 (* ALTERNATIVE RADIX for input numbers *)
 
 (* default alternative radix is 2 *)
-   &1000000  .
+   &1000000 .
 (* change default alternative radix *)   %RADIX 8
-   &100  .
+   &100 .
 (* change default alternative radix *)   %RADIX 16
-   &FF  .
+   &FF .
 
 (* SCAN-TIME EXPRESSIONS IN CHARACTER CONSTANTS *)
 
 %SET L = 65
-   '\L  .
-   '\ + L 32   .
+   '\L .
+   '\ + L 32 .
 %SET L = 'G
-   '\ + L - 'a 'A   .
+   '\ + L - 'a 'A .
 
 (* end of include file *)
