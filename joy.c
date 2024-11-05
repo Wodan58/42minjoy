@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.39
-    date    : 07/12/24
+    version : 1.40
+    date    : 10/30/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -1030,13 +1030,13 @@ static void writestatistics(FILE *f)
     lib = stat_lib;
     if ((lib -= start_clock) < 0)
 	lib = 0;
-    fprintf(f, "%.0f milliseconds CPU to read library\n",
-            lib * 1000 / CLOCKS_PER_SEC);
+    fprintf(f, "%lu milliseconds CPU to read library\n",
+            (long)(lib * 1000 / CLOCKS_PER_SEC));
     lib = end_clock;
     if ((lib -= stat_lib) < 0)
 	lib = 0;
-    fprintf(f, "%.0f milliseconds CPU to execute\n",
-            lib * 1000 / CLOCKS_PER_SEC);
+    fprintf(f, "%lu milliseconds CPU to execute\n",
+            (long)(lib * 1000 / CLOCKS_PER_SEC));
     fprintf(f, "%lu user nodes available\n", MAXMEM - firstusernode + 1L);
     fprintf(f, "%lu garbage collections\n", stat_gc);
     fprintf(f, "%lu nodes used\n", stat_kons);
