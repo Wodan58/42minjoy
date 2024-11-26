@@ -1,9 +1,9 @@
 #
 #   module  : CMakeLists.txt
-#   version : 1.9
-#   date    : 11/08/24
+#   version : 1.10
+#   date    : 11/26/24
 #
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.29)
 project(42minjoy VERSION 1.0)
 if("${CMAKE_BUILD_TYPE}" STREQUAL "")
   set(CMAKE_BUILD_TYPE "Release")
