@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.10
-    date    : 07/12/24
+    version : 1.13
+    date    : 11/14/24
 */
 /* File: Included file for scan utilities */
 
@@ -37,7 +37,7 @@ typedef struct toops {
 typedef struct _REC_inputs {
     FILE *fil;
     identalfa nam;
-    long lastlinenumber;
+    int lastlinenumber;
 } _REC_inputs;
 
 typedef struct _REC_reswords {
@@ -53,11 +53,11 @@ typedef struct _REC_stdidents {
 static FILE *listing;
 
 static _REC_inputs inputs[maxincludelevel];
-static long includelevel, adjustment, writelisting;
-static bool must_repeat_line;
+static int includelevel, adjustment, writelisting;
+static boolean must_repeat_line;
 
 static long scantimevariables['Z' + 1 - 'A'];
-static long alternative_radix, linenumber;
+static int alternative_radix, linenumber;
 static char line[maxlinelength + 1];
 static int cc, ll;
 static int chr;
@@ -78,28 +78,31 @@ static _REC_stdidents stdidents[maxstdidenttab + 1];
 #endif
 static int laststdident;
 #ifdef NETVER
-static long trace = 1;
+static int trace = 1;
 #endif
 #if 0
 static char resword_inverse[37];
 static long stringtab[maxstringtab + 1];
 static char chartab[maxchartab + 1];
-
 static toops toop;
 #endif
 
-static long errorcount, outlinelength, statistics;
-static clock_t start_clock, end_clock;
+static int errorcount, outlinelength, statistics;
+static time_t beg_time, end_time;
 
 /* - - - - -   MODULE ERROR    - - - - - */
 
-static void point_to_symbol(bool repeatline, FILE *f, char diag, char *mes)
+static void point_to_symbol(repeatline, f, diag, mes)
+boolean repeatline;
+FILE *f;
+char diag;
+char *mes;
 {
     char c;
     int i, j;
 
     if (repeatline) {
-	fprintf(f, "%*ld%s", linenumwidth, linenumber, linenumsep);
+	fprintf(f, "%*d%s", linenumwidth, linenumber, linenumsep);
 	for (i = 0; i < ll; i++)
 	    putc(line[i], f);
 	putc('\n', f);
@@ -117,7 +120,9 @@ static void point_to_symbol(bool repeatline, FILE *f, char diag, char *mes)
 	fprintf(f, "execution aborted\n");
 } /* point_to_symbol */
 
-static void point(char diag, char *mes)
+static void point(diag, mes)
+char diag;
+char *mes;
 {
     if (diag != 'I')
 	errorcount++;
@@ -130,12 +135,12 @@ static void point(char diag, char *mes)
 	must_repeat_line = true;
     }
     if (diag == 'F')
-	exit(0);
+	my_exit(0);
 } /* point */
 
 /* - - - - -   MODULE SCANNER  - - - - - */
 
-static void closelisting(void)
+static void closelisting()
 {
     if (listing)
 	fclose(listing);
@@ -145,14 +150,14 @@ static void closelisting(void)
 /*
     iniscanner - initialize global variables
 */
-static void iniscanner(void)
+static void iniscanner()
 {
-    start_clock = clock();
-    if ((listing = fopen(list_filename, "w")) == NULL) {
+    beg_time = time(0);
+    if ((listing = fopen(list_filename, "w")) == 0) {
 	fprintf(stderr, "%s (not open for writing)\n", list_filename);
-	exit(0);
+	my_exit(0);
     }
-    atexit(closelisting);
+    my_atexit(closelisting);
     writelisting = 0;
     chr = ' ';
     linenumber = 0;
@@ -178,7 +183,9 @@ static void iniscanner(void)
     must_repeat_line = false;
 } /* iniscanner */
 
-static void erw(char *str, symbol symb)
+static void erw(str, symb)
+char *str;
+symbol symb;
 {
     if (++lastresword > maxrestab)
 	point('F', "too many reserved words");
@@ -188,7 +195,9 @@ static void erw(char *str, symbol symb)
 } /* erw */
 
 #if defined(MINPAS) || defined(MINJOY)
-static void est(char *str, standardident symb)
+static void est(str, symb)
+char *str;
+standardident symb;
 {
     if (++laststdident > maxstdidenttab)
 	point('F', "too many identifiers");
@@ -198,7 +207,7 @@ static void est(char *str, standardident symb)
 } /* est */
 #endif
 
-static void release(void)
+static void release()
 {
     int i;
 
@@ -209,7 +218,9 @@ static void release(void)
 	}
 }
 
-static void newfile(char *str, int flag)
+static void newfile(str, flag)
+char *str;
+int flag;
 {
     static unsigned char init;
     FILE *fp;
@@ -217,12 +228,12 @@ static void newfile(char *str, int flag)
 
     if (!init) {
 	init = 1;
-	atexit(release);
+	my_atexit(release);
     }
     if (!flag) {
 	if (!freopen(str, "r", stdin)) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
-	    exit(0);
+	    my_exit(0);
 	}
 	adjustment = 0;
 	return;
@@ -238,7 +249,7 @@ static void newfile(char *str, int flag)
 	ptr = str;
     strncpy(inputs[includelevel].nam, ptr, identlength);
     inputs[includelevel].lastlinenumber = linenumber;
-    if ((fp = fopen(str, "r")) == NULL) {
+    if ((fp = fopen(str, "r")) == 0) {
 	/*
 	 * If the include file does not contain a pathname yet, the pathname
 	 * is prepended and the open is tried again. If that also fails, the
@@ -246,30 +257,28 @@ static void newfile(char *str, int flag)
 	 */
 	if (ptr == str) {
 	    flag = strlen(pathname) + strlen(str) + 1;
-	    ptr = malloc(flag);
+	    ptr = (char *)malloc(flag);
 	    sprintf(ptr, "%s%s", pathname, str);
 	    fp = fopen(ptr, "r");
 	    free(ptr);
 	}
 	if (!fp) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
-	    exit(0);
+	    my_exit(0);
 	}
     }
     inputs[includelevel].fil = fp;
     adjustment = 1;
 } /* newfile */
 
-static void getsym(void);
-
 #define dirlength	16
 
-static void perhapslisting(void)
+static void perhapslisting()
 {
     int i;
 
     if (writelisting > 0) {
-	fprintf(listing, "%*ld%s", linenumwidth, linenumber, linenumsep);
+	fprintf(listing, "%*d%s", linenumwidth, linenumber, linenumsep);
 	for (i = 0; i < ll; i++)
 	    putc(line[i], listing);
 	putc('\n', listing);
@@ -278,7 +287,7 @@ static void perhapslisting(void)
     }
 }
 
-static void getch(void)
+static void getch()
 {
     FILE *f;
     char *ptr;
@@ -302,7 +311,7 @@ static void getch(void)
 		ll = strlen(line);
 		perhapslisting();
 	    } else
-		exit(0);
+		my_exit(0);
 	} else {
 	    f = inputs[includelevel - 1].fil;
 	    if (fgets(line, maxlinelength, f)) {
@@ -312,7 +321,7 @@ static void getch(void)
 		perhapslisting();
 	    } else {
 		fclose(f);
-		inputs[includelevel - 1].fil = NULL;
+		inputs[includelevel - 1].fil = 0;
 		adjustment = -1;
 	    }
 	}
@@ -321,7 +330,7 @@ static void getch(void)
     chr = line[cc++];
 } /* getch */
 
-static long value(void)
+static long value()
 {
     /* this is a  LL(0) parser */
     long result = 0;
@@ -393,7 +402,7 @@ einde:
     return result;
 } /* value */
 
-static void directive(void)
+static void directive()
 {
     int i;
     char c, dir[dirlength + 1];
@@ -402,7 +411,7 @@ static void directive(void)
     i = 0;
     do {
 	if (i < dirlength)
-	    dir[i++] = chr;
+	    dir[i++] = (char)chr;
 	getch();
     } while (chr == '_' || isupper(chr));
     dir[i] = 0;
@@ -417,7 +426,7 @@ static void directive(void)
 	i = 0;
 	do {
 	    if (i < identlength)
-		ident[i++] = chr;
+		ident[i++] = (char)chr;
 	    getch();
 	} while (chr > ' ');
 	ident[i] = 0;
@@ -433,7 +442,7 @@ static void directive(void)
 	    getch();
 	if (!isupper(chr))
 	    point('E', "\"A\" .. \"Z\" expected");
-	c = chr;
+	c = (char)chr;
 	getch();
 	while (chr <= ' ')
 	    getch();
@@ -446,24 +455,24 @@ static void directive(void)
 #endif
     } else if (!strcmp(dir, "LISTING")) {
 	i = writelisting;
-	writelisting = value();
+	writelisting = (int)value();
 	if (!i)
 	    perhapslisting();
     } else if (!strcmp(dir, "STATISTICS"))
-	statistics = value();
+	statistics = (int)value();
     else if (!strcmp(dir, "RADIX"))
-	alternative_radix = value();
+	alternative_radix = (int)value();
     else
 	point('F', "unknown directive");
     getch();
 } /* directive */
 
-static void getsym(void)
+static void getsym()
 {
 #if 0
     char c;
 #endif
-    bool negated;
+    boolean negated;
     int i, j, k, index;
 
 begin:
@@ -583,9 +592,9 @@ begin:
 	     * or it may be the start of an identifier. The table of reserved
 	     * words is searched after reading each character.
 	     */
-again:		    
+again:		   
 	    if (index < identlength)
-		ident[index++] = chr;
+		ident[index++] = (char)chr;
 	    getch();
 	    ident[index] = 0;
 	    i = 1;
@@ -611,11 +620,11 @@ again:
 		 * No second special character was read. It is still possible
 		 * to build an identifier that starts with one special char.
 		 */
-einde:		
+einde:	
 		if (chr == '_' || isalnum(chr)) {
 		    do {
 			if (index < identlength)
-			    ident[index++] = chr;
+			    ident[index++] = (char)chr;
 			getch();
 		    } while (chr == '_' || isalnum(chr));
 		}
@@ -661,7 +670,8 @@ static void test(symset s1, symset s2, char *er)
 /* - - - - -   MODULE OUTPUT   - - - - - */
 
 #ifndef MINPAS
-static void putch(int c)
+static void putch(c)
+int c;
 {
     putchar(c);
     if (writelisting > 0) {
@@ -675,7 +685,7 @@ static void putch(int c)
 	outlinelength++;
 }
 
-static void writeline(void)
+static void writeline()
 {
     putchar('\n');
     if (writelisting > 0)
@@ -683,7 +693,8 @@ static void writeline(void)
     outlinelength = 0;
 }
 
-static void writeident(char *str)
+static void writeident(str)
+char *str;
 {
     int i, length;
 
@@ -708,14 +719,16 @@ static void writeresword(char *str)
 }
 #endif
 
-static void writenatural(intptr_t n)
+static void writenatural(n)
+long n;
 {
     if (n >= 10)
 	writenatural(n / 10);
-    putch(n % 10 + '0');
+    putch((int)(n % 10 + '0'));
 }
 
-static void writeinteger(intptr_t i)
+static void writeinteger(i)
+long i;
 {
     if (outlinelength + 12 > maxoutlinelength)
 	writeline();
@@ -728,20 +741,19 @@ static void writeinteger(intptr_t i)
 } /* writeinteger */
 #endif
 
-static void fin(FILE *f)
+static void fin(f)
+FILE *f;
 {
-    double lib;
+    time_t c;
 
     if (errorcount > 0)
-	fprintf(f, "%ld error(s)\n", errorcount);
-    lib = end_clock = clock();
-    if ((lib -= start_clock) > 0) {
-	lib = lib * 1000 / CLOCKS_PER_SEC;
-	fprintf(f, "%.0f milliseconds CPU\n", lib);
-    }
+	fprintf(f, "%d error(s)\n", errorcount);
+    end_time = time(0);
+    if ((c = end_time - beg_time) > 0)
+	fprintf(f, "%lu seconds CPU\n", c);
 }
 
-static void finalise(void)
+static void finalise()
 {
     /* finalise */
     fflush(stdout);

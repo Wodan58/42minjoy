@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.40
-    date    : 10/30/24
+    version : 1.45
+    date    : 11/20/24
 */
 #include <stdio.h>
 #include <string.h>
@@ -9,15 +9,15 @@
 #include <stdlib.h>
 #include <time.h>
 #include <setjmp.h>
-#include <stdbool.h>
-#include <inttypes.h>
 
-/* #define DEBUG */
-
-#ifdef _MSC_VER
-#pragma warning(disable: 4244 4267 4996)
+#if 0
+#define DEBUG
 #endif
 
+/*
+ * The library should be read only once. As a consequence, some calls to strdup
+ * are needed. These strings are freed in the patch phase.
+ */
 #define CORRECT_GARBAGE
 #define READ_LIBRARY_ONCE
 #define OBSOLETE_NOTHING
@@ -28,12 +28,9 @@
 #endif
 
 #ifdef DEBUG
-int debug = 1;
-#define LOGFILE(s)	{ if (debug) { FILE *fp = fopen("joy.log",\
-			strcmp(s, "main") ? "a" : "w");\
-			fprintf(fp, "%s\n", s); fclose(fp); } }
+#define LOGFILE(x)	printf("%s\n", x)
 #else
-#define LOGFILE(s)
+#define LOGFILE(x)
 #endif
 
 typedef unsigned char boolean;
@@ -59,6 +56,13 @@ typedef enum {
 /* hyphen */
 } symbol;
 
+/*
+ * Renaming: index -> of, select -> opcase
+ * Removing: nothing
+ *
+ * The removal of nothing means that uncons can only be used for non-empty
+ * lists.
+ */
 typedef enum {
     lib_, mul_, add_, sub_, div_, lss_, eql_, and_, body_, cons_, dip_, dup_,
     false_, get_, getch_, i_,
@@ -86,6 +90,8 @@ typedef enum {
     uncons_, unstack_, boolean_, char_, integer_, list_, unknownident
 } standardident;
 
+typedef short memrange;
+
 /*
  * pathname of the joy binary, to be used as prefix to library files. That way
  * it is not necessary to copy all library files to all working directories.
@@ -100,14 +106,15 @@ char *pathname;
  */
 int autoput = 1;
 
+#include "proto.h"
 #define MINJOY
 #include "scanutil.c"
 
-static void initialise(void)
+static void initialise()
 {
-    unsigned i;
+    int i;
 
-    LOGFILE(__func__);
+    LOGFILE("initialise");
     iniscanner();
     strcpy(specials_repeat, "=>");
     erw(".",	period);
@@ -161,7 +168,7 @@ static void initialise(void)
     est("uncons",     uncons_);
     est("unstack",    unstack_);
     for (i = mul_; i <= unstack_; i++)
-	if (i != stdidents[i].symb)
+	if (i != (int)stdidents[i].symb)
 	    point('F', "bad order in standard idents");
 }  /* initialise */
 
@@ -172,22 +179,20 @@ static void initialise(void)
 #define MAXMEM		2000
 #endif
 
-typedef short memrange;
-
 typedef struct _REC_table {
     identalfa alf;
     memrange adr;
 } _REC_table;
 
 typedef struct _REC_m {
-    intptr_t val;
+    long val;
     memrange nxt;
-    unsigned char op;
+    unsigned char op;	/* standardident */
     boolean marked;
 } _REC_m;
 
 static _REC_table table[MAXTABLE + 1];
-static long lastlibloc, sentinel, lasttable, locatn;
+static int lastlibloc, sentinel, lasttable, locatn;
 static _REC_m m[MAXMEM + 1];
 static memrange firstusernode, freelist, programme;
 static memrange s,  /* stack */
@@ -197,7 +202,7 @@ static memrange s,  /* stack */
 static standardident last_op_executed;
 #endif
 static long stat_kons, stat_gc, stat_ops, stat_calls;
-static clock_t stat_lib;
+static time_t stat_lib;
 
 static char *standardident_NAMES[] = {
     "LIB", "*", "+", "-", "/", "<", "=", "and", "body", "cons", "dip", "dup",
@@ -227,33 +232,33 @@ static char *standardident_NAMES[] = {
 };
 
 #ifdef DEBUG
-void DumpM(void)
+void DumpM()
 {
-    long i;
+    int i;
     FILE *fp = fopen("joy.dmp", "w");
 
-    LOGFILE(__func__);
+    LOGFILE("DumpM");
     fprintf(fp, "Table\n");
     fprintf(fp, "  nr %-*.*s  adr\n", identlength, identlength, "name");
     for (i = 1; i <= MAXTABLE && table[i].adr; i++)
-	fprintf(fp, "%4ld %-*.*s %4ld\n", i, identlength, identlength,
-		table[i].alf, (long)table[i].adr);
+	fprintf(fp, "%4d %-*.*s %4d\n", i, identlength, identlength,
+		table[i].alf, table[i].adr);
     fprintf(fp, "\nMemory\n");
     fprintf(fp, "  nr %-*.*s      value next M\n", identlength,
 	    identlength, "name");
     for (i = 1; i <= MAXMEM && m[i].marked; i++)
-	fprintf(fp, "%4ld %-*.*s %10ld %4ld %c\n", i, identlength, identlength,
-		standardident_NAMES[m[i].op], (long)m[i].val, (long)m[i].nxt,
+	fprintf(fp, "%4d %-*.*s %10ld %4d %c\n", i, identlength, identlength,
+		standardident_NAMES[m[i].op], m[i].val, m[i].nxt,
 		m[i].marked ? 'T' : 'F');
     fclose(fp);
 }
 #endif
 
-static void lookup(void)
+static void lookup()
 {
     int i, j;
 
-    LOGFILE(__func__);
+    LOGFILE("lookup");
 #ifdef READ_LIBRARY_ONCE
     if (!sentinel) {
 	id = unknownident;
@@ -311,32 +316,35 @@ static void lookup(void)
 	}  /* ELSE */
     }  /* ELSE */
     if (writelisting > 4)
-	fprintf(listing, "lookup : %-*.*s at %ld\n", identlength, identlength,
+	fprintf(listing, "lookup : %-*.*s at %d\n", identlength, identlength,
 		standardident_NAMES[id], locatn);
 }  /* lookup */
 
-static void wn(FILE *f, memrange n)
+static void wn(f, n)
+FILE *f;
+memrange n;
 {
-    LOGFILE(__func__);
+    LOGFILE("wn");
 #ifdef READ_LIBRARY_ONCE
     if (m[n].op == unknownident)
-	fprintf(f, "%5ld %-*.*s %10ld %10ld %c", (long)n, identlength,
-	    identlength, (char *)m[n].val, 0L, (long)m[n].nxt,
+	fprintf(f, "%5d %-*.*s %10d %10d %c", n, identlength,
+	    identlength, (char *)m[n].val, 0, m[n].nxt,
 	    m[n].marked ? 'T' : 'F');
     else
 #endif
-	fprintf(f, "%5ld %-*.*s %10ld %10ld %c", (long)n, identlength,
-	    identlength, standardident_NAMES[m[n].op], (long)m[n].val,
-	    (long)m[n].nxt, m[n].marked ? 'T' : 'F');
+	fprintf(f, "%5d %-*.*s %10ld %10d %c", n, identlength,
+	    identlength, standardident_NAMES[m[n].op], m[n].val,
+	    m[n].nxt, m[n].marked ? 'T' : 'F');
     if (m[n].op == lib_)
-	fprintf(f, "   %-*.*s %4ld", identlength, identlength,
-		table[m[n].val].alf, (long)table[m[n].val].adr);
+	fprintf(f, "   %-*.*s %4d", identlength, identlength,
+		table[m[n].val].alf, table[m[n].val].adr);
     putc('\n', f);
 }
 
-static void writenode(memrange n)
+static void writenode(n)
+memrange n;
 {
-    LOGFILE(__func__);
+    LOGFILE("writenode");
     wn(stdout, n);
     if (writelisting > 0) {
 	putc('\t', listing);
@@ -344,25 +352,29 @@ static void writenode(memrange n)
     }
 }  /* writenode */
 
-static void mark(memrange n)
+static void mark(n)
+memrange n;
 {
-    LOGFILE(__func__);
+    LOGFILE("mark");
     while (n > 0) {
 	if (writelisting > 4)
 	    writenode(n);
 	if (m[n].op == list_ && !m[n].marked)
-	    mark(m[n].val);
+	    mark((memrange)m[n].val);
 	m[n].marked = true;
 	n = m[n].nxt;
     }
 }  /* mark */
 
-static memrange kons(standardident o, intptr_t v, memrange n)
+static memrange kons(o, v, n)
+standardident o;
+long v;
+memrange n;
 {
     memrange i;
     long collected;
 
-    LOGFILE(__func__);
+    LOGFILE("kons");
     if (!freelist) {
 	if (!sentinel)
 	    goto einde;
@@ -380,7 +392,7 @@ static memrange kons(standardident o, intptr_t v, memrange n)
 	/* mark parameters */
 	mark(n);
 	if (o == list_)
-	    mark(v);
+	    mark((memrange)v);
 	if (writelisting > 3) {
 	    writeident("finished marking");
 	    writeline();
@@ -413,7 +425,7 @@ einde:
     if (i == n)
 	point('F', "internal error - circular");
     freelist = m[i].nxt;
-    m[i].op = o;
+    m[i].op = (unsigned char)o;
     m[i].val = v;
     m[i].nxt = n;
     if (writelisting > 4)
@@ -422,29 +434,29 @@ einde:
     return i;
 }  /* kons */
 
-static char *my_strdup(char *str)
+static char *my_strdup(str)
+char *str;
 {
     char *ptr;
     size_t leng;
 
+    LOGFILE("my_strdup");
     leng = strlen(str);
-    if ((ptr = malloc(leng + 1)) != 0)
+    if ((ptr = (char *)malloc(leng + 1)) != 0)
         strcpy(ptr, str);
     return ptr;
 }
 
-static void readterm(memrange *);
-
-static void readfactor(memrange *where)
+static void readfactor(where)
+memrange *where;
 {
     memrange here;
 
-    LOGFILE(__func__);
+    LOGFILE("readfactor");
     switch (sym) {
-
     case lbrack:
 	getsym();
-	*where = kons(list_, 0, 0);
+	*where = kons(list_, 0L, 0);
 	m[*where].marked = true;
 	if (sym == lbrack || sym == identifier || sym == charconst ||
 		sym == numberconst) {	/* sym == hyphen */
@@ -457,10 +469,10 @@ static void readfactor(memrange *where)
 	lookup();
 #ifdef READ_LIBRARY_ONCE
 	if (id == unknownident)
-	    *where = kons(id, (intptr_t)my_strdup(ident), 0);
+	    *where = kons(id, (long)my_strdup(ident), 0);
 	else
 #endif
-	    *where = kons(id, locatn, 0);
+	    *where = kons(id, (long)locatn, 0);
 	break;
 
     case charconst:
@@ -487,12 +499,13 @@ static void readfactor(memrange *where)
     m[*where].marked = true;
 }  /* readfactor */
 
-static void readterm(memrange *first)
+static void readterm(first)
+memrange *first;
 {   /* readterm */
     /* was forward */
     memrange i;
 
-    LOGFILE(__func__);
+    LOGFILE("readterm");
     /* this is LL0 */
     readfactor(first);
     if ((i = *first) == 0)
@@ -506,11 +519,11 @@ static void readterm(memrange *first)
     }
 }  /* readterm */
 
-static void writefactor(memrange n, boolean nl);
-
-static void writeterm(memrange n, boolean nl)
+static void writeterm(n, nl)
+memrange n;
+boolean nl;
 {
-    LOGFILE(__func__);
+    LOGFILE("writeterm");
     while (n > 0) {
 	writefactor(n, false);
 	if (m[n].nxt > 0)
@@ -521,15 +534,16 @@ static void writeterm(memrange n, boolean nl)
 	writeline();
 }  /* writeterm */
 
-static void writefactor(memrange n, boolean nl)
+static void writefactor(n, nl)
+memrange n;
+boolean nl;
 {   /* was forward */
-    LOGFILE(__func__);
+    LOGFILE("writefactor");
     if (n > 0) {
 	switch (m[n].op) {
-
 	case list_:
 	    putch('[');
-	    writeterm(m[n].val, false);
+	    writeterm((memrange)m[n].val, false);
 	    putch(']');
 	    break;
 
@@ -544,7 +558,7 @@ static void writefactor(memrange n, boolean nl)
 	    if (m[n].val == '\n')
 		writeline();
 	    else
-		putch(m[n].val);
+		putch((int)m[n].val);
 	    break;
 
 	case integer_:
@@ -569,25 +583,24 @@ static void writefactor(memrange n, boolean nl)
 }  /* writefactor */
 
 #ifdef READ_LIBRARY_ONCE
-static void patchfactor(memrange n);
-
-static void patchterm(memrange n)
+static void patchterm(n)
+memrange n;
 {
-    LOGFILE(__func__);
+    LOGFILE("patchterm");
     while (n > 0) {
 	patchfactor(n);
 	n = m[n].nxt;
     }
 }  /* patchterm */
 
-static void patchfactor(memrange n)
+static void patchfactor(n)
+memrange n;
 {   /* was forward */
-    LOGFILE(__func__);
+    LOGFILE("patchfactor");
     if (n > 0) {
 	switch (m[n].op) {
-
 	case list_:
-	    patchterm(m[n].val);
+	    patchterm((memrange)m[n].val);
 	    break;
 
 	case unknownident:
@@ -596,7 +609,7 @@ static void patchfactor(memrange n)
 	    free((char *)m[n].val);
 	    m[n].val = 0;
 	    lookup();
-	    m[n].op = id;
+	    m[n].op = (unsigned char)id;
 	    m[n].val = locatn;
 	    break;
 	}  /* CASE */
@@ -604,7 +617,8 @@ static void patchfactor(memrange n)
 }  /* patchfactor */
 #endif
 
-static void readlibrary(char *str)
+static void readlibrary(str)
+char *str;
 {
 #ifdef READ_LIBRARY_ONCE
     FILE *fp;
@@ -612,7 +626,7 @@ static void readlibrary(char *str)
     char *lib;
     int loc, must_free = 0;
 
-    LOGFILE(__func__);
+    LOGFILE("readlibrary");
 #if 0
     if (writelisting > 5)
 	fprintf(listing, "first pass through library:\n");
@@ -626,16 +640,16 @@ static void readlibrary(char *str)
      */
     lastlibloc = 0;
 #ifdef READ_LIBRARY_ONCE
-    if ((fp = fopen(str, "r")) == NULL) {
+    if ((fp = fopen(str, "r")) == 0) {
 	/*
 	 * Prepend the pathname and try again. The library files are expected
 	 * to exist somewhere.
 	 */
 	if (pathname) {
 	    loc = strlen(pathname) + strlen(str) + 1;
-	    lib = malloc(loc);
+	    lib = (char *)malloc(loc);
 	    sprintf(lib, "%s%s", pathname, str);
-	    if ((fp = fopen(lib, "r")) == NULL) {
+	    if ((fp = fopen(lib, "r")) == 0) {
 		free(lib);
 		goto failed;
 	    }
@@ -722,8 +736,8 @@ done:
 #endif
     firstusernode = freelist;
     if (writelisting > 5)
-	fprintf(listing, "firstusernode = %ld,  total memory = %ld\n",
-		(long)firstusernode, (long)MAXMEM);
+	fprintf(listing, "firstusernode = %d,  total memory = %d\n",
+		firstusernode, MAXMEM);
     cc = ll;
 #ifdef READ_LIBRARY_ONCE
     sentinel = lastlibloc + 1;
@@ -740,19 +754,22 @@ done:
 
 static jmp_buf JL10;
 
-static memrange ok(memrange x)
+static memrange ok(x)
+memrange x;
 {
     if (x < 1)
 	point('F', "null address being referenced");
     return x;
 }  /* ok */
 
-static standardident o(memrange x)
+static unsigned char o(x)
+memrange x;
 {
     return m[ok(x)].op;
-}
+}  /* o */
 
-static intptr_t i(memrange x)
+static long get_i(x)
+memrange x;
 {
     if (o(x) == integer_)
 	return m[x].val;
@@ -760,15 +777,17 @@ static intptr_t i(memrange x)
     longjmp(JL10, 1);
 }  /* i */
 
-static memrange l(memrange x)
+static memrange l(x)
+memrange x;
 {
     if (o(x) == list_)
-	return m[x].val;
+	return (memrange)m[x].val;
     point('R', "list value required");
     longjmp(JL10, 1);
 }  /* l */
 
-static memrange n(memrange x)
+static memrange n(x)
+memrange x;
 {
     if (m[ok(x)].nxt >= 0)
 	return m[x].nxt;
@@ -776,29 +795,34 @@ static memrange n(memrange x)
     longjmp(JL10, 1);
 }  /* n */
 
-static intptr_t v(memrange x)
+static long v(x)
+memrange x;
 {
     return m[ok(x)].val;
-}
+}  /* v */
 
-static boolean b(memrange x)
+static boolean b(x)
+memrange x;
 {
     return (boolean)(v(x) > 0);
-}
+}  /* b */
 
-static void binary(standardident o, intptr_t v)
+static void binary(o, v)
+standardident o;
+long v;
 {
     s = kons(o, v, n(n(s)));
 }
 
-static void joy(memrange nod)
+static void joy(nod)
+memrange nod;
 {
 #ifdef RENAME_INDEX
-    intptr_t val;
+    long val;
 #endif
     memrange temp1, temp2;
 
-    LOGFILE(__func__);
+    LOGFILE("joy");
     while (nod > 0) {  /* WHILE */
 	if (writelisting > 3) {
 	    writeident("joy:");
@@ -828,7 +852,7 @@ static void joy(memrange nod)
 
 	case true_:
 	case false_:
-	    s = kons(boolean_, m[nod].op == true_, s);
+	    s = kons(boolean_, (long)(m[nod].op == true_), s);
 	    break;
 
 	case pop_:
@@ -844,7 +868,7 @@ static void joy(memrange nod)
 	    break;
 
 	case stack_:
-	    s = kons(list_, s, s);
+	    s = kons(list_, (long)s, s);
 	    break;
 
 	case unstack_:
@@ -853,64 +877,66 @@ static void joy(memrange nod)
 
 	/* OPERATIONS: */
 	case not_:
-	    s = kons(boolean_, !b(s), n(s));
+	    s = kons(boolean_, (long)!b(s), n(s));
 	    break;
 
 	case mul_:
-	    binary(integer_, i(n(s)) * i(s));
+	    binary(integer_, get_i(n(s)) * get_i(s));
 	    break;
 
 	case add_:
-	    binary(integer_, v(n(s)) + i(s));	/* add integer to character */
+	    binary(integer_, v(n(s)) + get_i(s));
 	    break;
 
 	case sub_:
-	    binary(integer_, v(n(s)) - i(s));	/* subtract integer from char */
+	    binary(integer_, v(n(s)) - get_i(s));
 	    break;
 
 	case div_:
-	    binary(integer_, i(n(s)) / i(s));
+	    binary(integer_, get_i(n(s)) / get_i(s));
 	    break;
 
 	case and_:
-	    binary(boolean_, b(n(s)) & b(s));
+	    binary(boolean_, (long)(b(n(s)) & b(s)));
 	    break;
 
 	case or_:
-	    binary(boolean_, b(n(s)) | b(s));
+	    binary(boolean_, (long)(b(n(s)) | b(s)));
 	    break;
 
 	case lss_:
 	    if (o(s) == lib_)
-		binary(boolean_,strcmp(table[v(n(s))].alf,table[v(s)].alf) < 0);
+		binary(boolean_, (long)(strcmp(table[v(n(s))].alf,
+					       table[v(s)].alf) < 0));
 	    else
-		binary(boolean_, v(n(s)) < v(s));
+		binary(boolean_, (long)(v(n(s)) < v(s)));
 	    break;
 
 	case eql_:
-	    binary(boolean_, v(n(s)) == v(s));
+	    binary(boolean_, (long)(v(n(s)) == v(s)));
 	    break;
 
 	case sametype_:
-	    binary(boolean_, o(n(s)) == o(s));
+	    binary(boolean_, (long)(o(n(s)) == o(s)));
 	    break;
 
 	case cons_:
 #ifndef OBSOLETE_NOTHING
 	    if (o(n(s)) == nothing_)
-		s = kons(list_, l(s), n(n(s)));
+		s = kons(list_, (long)l(s), n(n(s)));
 	    else
 #endif
-		s = kons(list_, kons(o(n(s)), v(n(s)), v(s)), n(n(s)));
+		s = kons(list_, (long)kons(o(n(s)), v(n(s)), (memrange)v(s)),
+				n(n(s)));
 	    break;
 
 	case uncons_:
 #ifndef OBSOLETE_NOTHING
 	    if (!v(s))
-		s = kons(list_, 0, kons(nothing_, nothing_, n(s)));
+		s = kons(list_, 0L, kons(nothing_, (long)nothing_, n(s)));
 	    else
 #endif
-		s = kons(list_, n(l(s)), kons(o(l(s)), v(l(s)), n(s)));
+		s = kons(list_, (long)n(l(s)), kons(o(l(s)), v(l(s)), n(s)));
 	    break;
 
 #ifdef RENAME_SELECT
@@ -921,7 +947,7 @@ static void joy(memrange nod)
 	    temp1 = l(s);
 	    while (o(l(temp1)) != o(n(s)))
 		temp1 = n(temp1);
-	    s = kons(list_, n(l(temp1)), n(s));
+	    s = kons(list_, (long)n(l(temp1)), n(s));
 	    break;
 
 #ifdef RENAME_INDEX
@@ -941,7 +967,7 @@ static void joy(memrange nod)
 #endif
 
 	case body_:
-	    s = kons(list_, table[v(s)].adr, n(s));
+	    s = kons(list_, (long)table[v(s)].adr, n(s));
 	    break;
 
 #ifdef ADD_SETAUTOPUT
@@ -957,7 +983,7 @@ static void joy(memrange nod)
 	    break;
 
 	case putch_:
-	    putch(v(s));
+	    putch((int)v(s));
 	    s = n(s);
 	    break;
 
@@ -969,13 +995,18 @@ static void joy(memrange nod)
 
 	case getch_:
 	    getch();
-	    s = kons(integer_, chr, s);
+	    s = kons(integer_, (long)chr, s);
 	    break;
 
 	/* COMBINATORS: */
 	case i_:
+/*
+ * It is possible that during evaluation of the program that is processed by i,
+ * that program is garbage collected. This is prevented by placing that program
+ * on the dump.
+ */
 #ifdef CORRECT_GARBAGE
-	    dump = kons(o(s), l(s), dump);
+	    dump = kons(o(s), (long)l(s), dump);
 #endif
 	    temp1 = s;
 	    s = n(s);
@@ -987,7 +1018,7 @@ static void joy(memrange nod)
 
 	case dip_:
 	    dump = kons(o(n(s)), v(n(s)), dump);
-	    dump = kons(list_, l(s), dump);
+	    dump = kons(list_, (long)l(s), dump);
 	    s = n(n(s));
 	    joy(l(dump));
 	    dump = n(dump);
@@ -996,8 +1027,8 @@ static void joy(memrange nod)
 	    break;
 
 	case step_:
-	    dump = kons(o(s), l(s), dump);
-	    dump = kons(o(n(s)), l(n(s)), dump);
+	    dump = kons(o(s), (long)l(s), dump);
+	    dump = kons(o(n(s)), (long)l(n(s)), dump);
 	    temp1 = l(s);
 	    temp2 = l(n(s));
 	    s = n(n(s));
@@ -1022,21 +1053,25 @@ static void joy(memrange nod)
     stat_calls++;
 }  /* joy */
 
-static void writestatistics(FILE *f)
+static void writestatistics(f)
+FILE *f;
 {
-    double lib;
+    time_t c[2];
 
-    LOGFILE(__func__);
-    lib = stat_lib;
-    if ((lib -= start_clock) < 0)
-	lib = 0;
-    fprintf(f, "%lu milliseconds CPU to read library\n",
-            (long)(lib * 1000 / CLOCKS_PER_SEC));
-    lib = end_clock;
-    if ((lib -= stat_lib) < 0)
-	lib = 0;
-    fprintf(f, "%lu milliseconds CPU to execute\n",
-            (long)(lib * 1000 / CLOCKS_PER_SEC));
+    /*
+     * end_time - beg_time has already been reported as the time needed to
+     * execute (unless the time measured was 0). This duration includes reading
+     * the library. Here it is split between reading the library and execution
+     * proper.
+     */
+    LOGFILE("writestatistics");
+    c[0] = end_time - beg_time;
+    c[1] = stat_lib - beg_time;
+    if (c[1] > 0)
+	fprintf(f, "%lu seconds CPU to read library\n", c[1]);
+    c[0] -= c[1];
+    if (c[0] > 0)
+	fprintf(f, "%lu seconds CPU to execute\n", c[0]);
     fprintf(f, "%lu user nodes available\n", MAXMEM - firstusernode + 1L);
     fprintf(f, "%lu garbage collections\n", stat_gc);
     fprintf(f, "%lu nodes used\n", stat_kons);
@@ -1044,18 +1079,18 @@ static void writestatistics(FILE *f)
     fprintf(f, "%lu operations executed\n", stat_ops);
 }  /* writestatistics */
 
-static void perhapsstatistics(void);
-
-int main(int argc, char *argv[])
+int main(argc, argv)
+int argc;
+char *argv[];
 {  /* main */
     memrange i;
     int j;
     char *ptr;
 
-    LOGFILE(__func__);
-    start_clock = clock();
+    LOGFILE("main");
+    beg_time = time(0);
     initialise();
-    atexit(perhapsstatistics);
+    my_atexit(perhapsstatistics);
     for (i = 1; i <= MAXMEM; i++) {
 	m[i].marked = false;
 	m[i].nxt = i + 1;
@@ -1074,7 +1109,7 @@ int main(int argc, char *argv[])
      */
     if ((ptr = strrchr(argv[0], '/')) != 0) {
 	j = ptr - argv[0];
-	pathname = malloc(j + 2);
+	pathname = (char *)malloc(j + 2);
 	strncpy(pathname, argv[0], j + 1);
 	pathname[j + 1] = 0;
     }
@@ -1083,7 +1118,7 @@ int main(int argc, char *argv[])
      * no definitions.
      */
     readlibrary(lib_filename);
-    stat_lib = clock();
+    stat_lib = time(0);
     if (writelisting > 2)
 	for (j = 1; j <= lastlibloc; j++) {
 	    fprintf(listing, "\"%-*.*s\" :\n", identlength, identlength,
@@ -1145,9 +1180,9 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-static void perhapsstatistics(void)
+static void perhapsstatistics()
 {
-    LOGFILE(__func__);
+    LOGFILE("perhapsstatistics");
     finalise();
     if (statistics > 0) {
 	fflush(stdout);
@@ -1155,4 +1190,26 @@ static void perhapsstatistics(void)
 	if (writelisting > 0)
 	    writestatistics(listing);
     }
+}
+
+#define MAXTAB	10
+
+static int my_index;
+static void (*my_table[MAXTAB])(VOIDPARM);
+
+static int my_atexit(proc)
+void (*proc)(VOIDPARM);
+{
+    if (my_index == MAXTAB)
+	return 1;
+    my_table[my_index++] = proc;
+    return 0;
+}
+
+static void my_exit(code)
+int code;	
+{
+    while (--my_index >= 0)
+	(*my_table[my_index])();
+    exit(code);
 }

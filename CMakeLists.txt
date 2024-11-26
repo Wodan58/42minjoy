@@ -1,9 +1,9 @@
 #
 #   module  : CMakeLists.txt
-#   version : 1.7
-#   date    : 07/03/24
+#   version : 1.9
+#   date    : 11/08/24
 #
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.31)
 project(42minjoy VERSION 1.0)
 if("${CMAKE_BUILD_TYPE}" STREQUAL "")
   set(CMAKE_BUILD_TYPE "Release")
@@ -14,7 +14,7 @@ else()
   option(RUN_TESTS "Run standard tests" OFF)
 endif()
 if(WIN32)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
 else()
   if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ansi -pedantic -g -O3 --coverage -fprofile-arcs -ftest-coverage") # debug, no optimisation
