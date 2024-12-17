@@ -4,9 +4,8 @@
 42minjoy
 ========
 
-This small version of Joy is claimed to be almost free of bugs.
-
-Even so, there can be some surprises.
+This is a small version of Joy and because of that has fewer bugs than the full
+version.
 
 The reason for maintaining this version of Joy is that it is an order of
 magnitude smaller than the full version.
@@ -20,7 +19,8 @@ Retro
 This version lends itself to be implemented on old machines, precisely because
 it is small. It so happened that one of the environments comes with an K&R C
 compiler, so that is why the sources needed to be changed. Modern compilers
-can still handle K&R.
+can still handle K&R. C99 requires them to give a warning. That warning can be
+ignored.
 
 MS-DOS 3.3
 ----------
@@ -56,7 +56,6 @@ on an original 8088 machine.
 Comments
 --------
 
-Compiling on old machines shows that the software
-is portable.
+Compiling on old machines shows that the software is portable.
 
-Speed of execution is irrelevant.
+Speed of execution is not so relevant anymore.

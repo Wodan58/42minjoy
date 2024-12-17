@@ -1,9 +1,9 @@
 /*
     module  : scanutil.c
-    version : 1.13
-    date    : 11/14/24
+    version : 1.19
+    date    : 12/14/24
 */
-/* File: Included file for scan utilities */
+/* scanutil.c: Included file for scan utilities */
 
 #define maxincludelevel	  5
 #define maxlinelength	  132
@@ -18,21 +18,8 @@
 
 #define initial_alternative_radix  2
 
-#if 0
-#define maxchartab	  1000
-#define maxstringtab	  100
-#endif
-
 typedef char identalfa[identlength + 1];
 typedef char resalfa[reslength + 1];
-
-#if 0
-typedef char message[messagelength + 1];
-
-typedef struct toops {
-    long symbols, types, strings, chars;
-} toops;
-#endif
 
 typedef struct _REC_inputs {
     FILE *fil;
@@ -56,7 +43,7 @@ static _REC_inputs inputs[maxincludelevel];
 static int includelevel, adjustment, writelisting;
 static boolean must_repeat_line;
 
-static long scantimevariables['Z' + 1 - 'A'];
+static value_t scantimevariables['Z' + 1 - 'A'];
 static int alternative_radix, linenumber;
 static char line[maxlinelength + 1];
 static int cc, ll;
@@ -65,12 +52,12 @@ static identalfa ident;
 #if defined(MINPAS) || defined(MINJOY)
 static standardident id;
 #endif
-#if 0
-static resalfa res;
-#endif
 static char specials_repeat[maxrestab + 1];
 static symbol sym;
-static long num;
+static value_t num;
+#ifdef MINJOY
+static char *str;
+#endif
 static _REC_reswords reswords[maxrestab + 1];
 static int lastresword;
 #if defined(MINPAS) || defined(MINJOY)
@@ -80,15 +67,44 @@ static int laststdident;
 #ifdef NETVER
 static int trace = 1;
 #endif
-#if 0
-static char resword_inverse[37];
-static long stringtab[maxstringtab + 1];
-static char chartab[maxchartab + 1];
-static toops toop;
+#ifdef MINJOY
+static char stringbuf[maxlinelength + 1];
 #endif
 
 static int errorcount, outlinelength, statistics;
 static time_t beg_time, end_time;
+
+/* - - - - -   MODULE STRINGS  - - - - - */
+
+static char *stralloc(count)
+int count;
+{
+    char *ptr;
+
+    if ((ptr = my_malloc(count)) == 0)
+	point('F', "too many strings");
+    return ptr;
+}
+
+static char *strsave(str)
+char *str;
+{
+    char *ptr;
+
+    ptr = stralloc(strlen(str) + 2);
+    *ptr++ = strunmark;		/* skip one char */
+    strcpy(ptr, str);
+    return ptr;			/* return user area */
+}
+
+static void strfree(ptr)
+char *ptr;
+{
+    if (!*--ptr) {		/* pointer is unmarked */
+	*ptr = maxrefcnt;	/* prevent double free */
+	my_free(ptr);		/* free pointer */
+    }
+}
 
 /* - - - - -   MODULE ERROR    - - - - - */
 
@@ -140,7 +156,7 @@ char *mes;
 
 /* - - - - -   MODULE SCANNER  - - - - - */
 
-static void closelisting()
+static void closelisting(VOIDPARM)
 {
     if (listing)
 	fclose(listing);
@@ -165,10 +181,10 @@ static void iniscanner()
     ll = 1; /* to enable fatal message during initialisation */
     memset(specials_repeat, 0, sizeof(specials_repeat)); /* def: no repeats */
     includelevel = 0;
-#if 0
     /*
      * Initial input file is stdin. This is not stored in the inputs table.
      */
+#if 0
     inputs[0].fil = stdin;
     strcpy(inputs[0].nam, "stdin");
     inputs[0].lastlinenumber = 1;
@@ -207,7 +223,7 @@ standardident symb;
 } /* est */
 #endif
 
-static void release()
+static void release(VOIDPARM)
 {
     int i;
 
@@ -255,12 +271,11 @@ int flag;
 	 * is prepended and the open is tried again. If that also fails, the
 	 * program fails. Pathname itself is a global variable.
 	 */
-	if (ptr == str) {
+	if (pathname && ptr == str) {
 	    flag = strlen(pathname) + strlen(str) + 1;
-	    ptr = (char *)malloc(flag);
+	    ptr = stralloc(flag);
 	    sprintf(ptr, "%s%s", pathname, str);
 	    fp = fopen(ptr, "r");
-	    free(ptr);
 	}
 	if (!fp) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
@@ -330,10 +345,10 @@ static void getch()
     chr = line[cc++];
 } /* getch */
 
-static long value()
+static value_t value()
 {
     /* this is a  LL(0) parser */
-    long result = 0;
+    value_t result = 0;
 
     do
 	getch();
@@ -469,7 +484,7 @@ static void directive()
 
 static void getsym()
 {
-#if 0
+#ifdef MINJOY
     char c;
 #endif
     boolean negated;
@@ -495,26 +510,23 @@ begin:
 	sym = charconst;
 	break;
 
-#if 0
+#ifdef MINJOY
     case '"':
-	if (toop.strings == maxstringtab)
-	    point('F', "too many strings");
-	stringtab[num = ++toop.strings] = toop.chars + 1;
+	stringbuf[i = 0] = 0;	/* initialize string */
 	getch();
-	while (ch != '"') {
-	    if ((c = ch) == '\\')
+	while (chr != '"') {
+	    if ((c = chr) == '\\')
 		c = value();
 	    else
 		getch();
-	    if (++toop.chars > maxchartab)
-		point('F', "too many characters in strings");
-	    chartab[toop.chars] = c;
+	    if (i >= maxlinelength)
+		point('F', "too many characters in string");
+	    stringbuf[i++] = c;
 	}  /* WHILE */
 	getch();
-	stringtab[num + 1] = toop.chars;
+	stringbuf[i] = 0;	/* finalize string */
+	str = strsave(stringbuf);
 	sym = stringconst;
-	/* FOR i := stringtab[num] TO stringtab[num+1] DO
-	    write(chartab[i]) */
 	break;
 #endif
 
@@ -555,7 +567,6 @@ begin:
 	    }
 	    negated = true;
 	}
-	sym = numberconst;
 	num = 0;
 	do {
 	    num = num * 10 + chr - '0';
@@ -563,10 +574,10 @@ begin:
 	} while (isdigit(chr));
 	if (negated)
 	    num = -num;
+	sym = numberconst;
 	break;
 
     case '&': /* number in alternative radix */
-	sym = numberconst;
 	num = 0;
 	getch();
 	while (isdigit(chr) || isupper(chr)) {
@@ -577,6 +588,7 @@ begin:
 	    num = alternative_radix * num + chr - '0';
 	    getch();
 	}
+	sym = numberconst;
 	break;
 
     case '%':
@@ -592,8 +604,7 @@ begin:
 	     * or it may be the start of an identifier. The table of reserved
 	     * words is searched after reading each character.
 	     */
-again:		   
-	    if (index < identlength)
+again:	    if (index < identlength)
 		ident[index++] = (char)chr;
 	    getch();
 	    ident[index] = 0;
@@ -619,9 +630,9 @@ again:
 		/*
 		 * No second special character was read. It is still possible
 		 * to build an identifier that starts with one special char.
+		 * The label "einde" cannot be moved one line further down.
 		 */
-einde:	
-		if (chr == '_' || isalnum(chr)) {
+einde:		if (chr == '_' || isalnum(chr)) {
 		    do {
 			if (index < identlength)
 			    ident[index++] = (char)chr;
@@ -720,7 +731,7 @@ static void writeresword(char *str)
 #endif
 
 static void writenatural(n)
-long n;
+value_t n;
 {
     if (n >= 10)
 	writenatural(n / 10);
@@ -728,7 +739,7 @@ long n;
 }
 
 static void writeinteger(i)
-long i;
+value_t i;
 {
     if (outlinelength + 12 > maxoutlinelength)
 	writeline();
@@ -750,7 +761,7 @@ FILE *f;
 	fprintf(f, "%d error(s)\n", errorcount);
     end_time = time(0);
     if ((c = end_time - beg_time) > 0)
-	fprintf(f, "%lu seconds CPU\n", c);
+	fprintf(f, "%lu seconds CPU\n", (unsigned long)c);
 }
 
 static void finalise()

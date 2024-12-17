@@ -1,8 +1,8 @@
 (*  vi: filetype=joy
 
     module  : 42minjoy.lib
-    version : 1.7
-    date    : 09/24/24
+    version : 1.8
+    date    : 12/13/24
 
     Set F to 1 : include definition for fib
     Set F to 0 : exclude definition for fib
@@ -23,16 +23,23 @@ I1 I2	/		==  I3		where I3 = (I1 / I2)	 *
 I1 I2	<		==  B		where B	 = (I1 < I2)	 *
 								 *)
 	!=		==  = not				 ;
-	<=		==  succ <				 ;
+								(*
+	<=		==  succ <				 *
+								 *)
+	<=		==  > not				 ;
 	<>		==  = not				 ;
 								(*
 I1 I2	=		==  B		where B	 =  (I1 = I2)	 *
 								 *)
 	>		==  swap <				 ;
-	>=		==  pred >				 ;
+								(*
+	>=		==  pred >				 *
+								 *)
+	>=		==  < not				 ;
+	abs		==  dup 0 < [[] [neg]] of i		 ;
 								(*
 	addlist		==  [+] zip				 *
-								(*
+								 *
 B1 B2	and		==  B3		where B3 = (B1 and B2)	 *
 								 *)
 	b		==  [i] dip i				 ;
@@ -85,16 +92,17 @@ the two operands might be a list.				 *
 
 %IF = F 1 %INCLUDE fib.lib
 
-(*
+	file		==  stdin sametype			 ;
+								(*
 	filter		==  [test] cons [] [cons] stepl		 *
-*)
+								 *)
 	first		==  uncons pop				 ;
 	fix		==  [duco] first swap cons duco		 ;
 	fold		==  [swap] dip step			 ;
-(*
+								(*
 	foldl		==  [] rollup stepl			 ;
 	foldr		==  [] rollup stepr			 ;
-*)
+								 *)
 	hidefirst	==  dip					 ;
 	hidesecond	==  [swap] dip dip swap			 ;
 								(*
@@ -120,14 +128,14 @@ the two operands might be a list.				 *
 	member		==  swap contains			 ;
 	mm		==  [pair] dip map unpair		 ;
 	mullists	==  [*] zip				 ;
+	neg		==  0 swap -				 ;
 	newline		==  '\10 put				 ;
 	nil		==  []					 ;
 								(*
 B1      not		==  B2	  where B2 = not B1		 *
-								 *)
-(*
+								 *
 	null		==  car nothing sametype		 *
-*)
+								 *)
 	null		==  nil =				 ;
 	nullary		==  stack swap dip rest cons unstack     ;
 								(*
@@ -195,9 +203,9 @@ X       pop		==					 *
 	shunt		==  [cnos] step			 	 ;
 	shuntmap	==  [[cnos] b] cons step		 ;
 	size		==  0 [pop succ] fold			 ;
-(*
+								(*
 	small		==  uncons null swap pop		 *
-*)
+								 *)
 	small		==  dup null [[rest null] [pop true]]
 			    of i				 ;
 	solostack	==  stack [clearstack] dip		 ;
@@ -205,10 +213,9 @@ X       pop		==					 *
 	square		==  dup *				 ;
 	succ		==  1 +					 ;
 	sum		==  0 [+] fold				 ;
-(*
-	sumuntried	==  [] 0 [+] foldl			 ;
-*)
 								(*
+	sumuntried	==  [] 0 [+] foldl			 *
+								 * 
 X Y	swap		==  Y X					 *
 								 *)
 	swapd		==  [swap] dip				 ;

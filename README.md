@@ -15,24 +15,25 @@ in 4 locations: standardident{}, initialise(), standardident\_NAMES[], and
 joy().  After translating from Pascal to C with the help of
 [p2c](https://github.com/Classic-Tools/p2c) some corrections were done.
 Reading the library files twice is not needed, given the nature of the language
-and that is why this feature was removed. After some more changes it is now a
-small version of Joy.
+and that is why this feature was removed. After some more changes it is now
+transitioning from a small version of Joy to a full version of Joy.
 
 Installation
 ------------
 
+    rm -rf build
     mkdir build
     cd build
-    cmake ..
+    cmake -G "Unix Makefiles" ..
     cmake --build .
+    cp joy.exe ..
 
 Debugging
 ---------
 
 Although this software contains almost no bugs, steps have been taken that make
-debugging easier.
-For a start, gdb requires that input comes from a file, so a typical session
-will be:
+debugging easier. For a start, gdb requires that input comes from a file, so a
+typical session will be:
 
     gdb joy
     ...
@@ -41,5 +42,4 @@ will be:
     quit
 
 If the program crashes gdb sometimes answers to the command `bt` with: No stack.
-In that case, it might be helpful that it is also possible to compile with
--DDEBUG and get a trace of program execution in joy.log.
+In that case, LOGFILE or printf calls can be added to or in some functions.
