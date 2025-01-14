@@ -1,0 +1,2 @@
+(* Add an element to the front of an aggregate *)
+[2 3] 1 swons [1 2 3] equal.

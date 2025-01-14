@@ -1,0 +1,2 @@
+(* Perform anonymous recursion using the x-combinator *)
+2 [pop succ] x 3 =.

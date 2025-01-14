@@ -1,12 +1,12 @@
 /*
     module  : scanutil.c
-    version : 1.19
-    date    : 12/14/24
+    version : 1.20
+    date    : 01/14/25
 */
 /* scanutil.c: Included file for scan utilities */
 
 #define maxincludelevel	  5
-#define maxlinelength	  132
+#define maxlinelength	  361	/* used to be 132 */
 #define linenumwidth	  4
 
 #define linenumspace	  "    "
@@ -15,6 +15,7 @@
 
 #define maxoutlinelength  60
 #define messagelength	  30
+#define dirlength	  10	/* used to be 16 */
 
 #define initial_alternative_radix  2
 
@@ -37,7 +38,7 @@ typedef struct _REC_stdidents {
     standardident symb;
 } _REC_stdidents;
 
-static FILE *listing;
+static FILE *srcfile, *listing;
 
 static _REC_inputs inputs[maxincludelevel];
 static int includelevel, adjustment, writelisting;
@@ -55,17 +56,14 @@ static standardident id;
 static char specials_repeat[maxrestab + 1];
 static symbol sym;
 static value_t num;
-#ifdef MINJOY
-static char *str;
-#endif
 static _REC_reswords reswords[maxrestab + 1];
 static int lastresword;
 #if defined(MINPAS) || defined(MINJOY)
 static _REC_stdidents stdidents[maxstdidenttab + 1];
 #endif
 static int laststdident;
-#ifdef NETVER
-static int trace = 1;
+#if defined(NETVER)
+static int trace;
 #endif
 #ifdef MINJOY
 static char stringbuf[maxlinelength + 1];
@@ -73,38 +71,6 @@ static char stringbuf[maxlinelength + 1];
 
 static int errorcount, outlinelength, statistics;
 static time_t beg_time, end_time;
-
-/* - - - - -   MODULE STRINGS  - - - - - */
-
-static char *stralloc(count)
-int count;
-{
-    char *ptr;
-
-    if ((ptr = my_malloc(count)) == 0)
-	point('F', "too many strings");
-    return ptr;
-}
-
-static char *strsave(str)
-char *str;
-{
-    char *ptr;
-
-    ptr = stralloc(strlen(str) + 2);
-    *ptr++ = strunmark;		/* skip one char */
-    strcpy(ptr, str);
-    return ptr;			/* return user area */
-}
-
-static void strfree(ptr)
-char *ptr;
-{
-    if (!*--ptr) {		/* pointer is unmarked */
-	*ptr = maxrefcnt;	/* prevent double free */
-	my_free(ptr);		/* free pointer */
-    }
-}
 
 /* - - - - -   MODULE ERROR    - - - - - */
 
@@ -115,17 +81,17 @@ char diag;
 char *mes;
 {
     char c;
-    int i, j;
+    int j, k;
 
     if (repeatline) {
 	fprintf(f, "%*d%s", linenumwidth, linenumber, linenumsep);
-	for (i = 0; i < ll; i++)
-	    putc(line[i], f);
+	for (j = 0; j < ll; j++)
+	    putc(line[j], f);
 	putc('\n', f);
     }
     fputs(underliner, f);
-    for (i = 0, j = cc - 2; i < j; i++)
-	if ((c = line[i]) < ' ')
+    for (j = 0, k = cc - 2; j < k; j++)
+	if ((c = line[j]) < ' ')
 	    putc(c, f);
 	else
 	    putc(' ', f);
@@ -136,8 +102,8 @@ char *mes;
 	fprintf(f, "execution aborted\n");
 } /* point_to_symbol */
 
-static void point(diag, mes)
-char diag;
+void point(diag, mes)
+int diag;
 char *mes;
 {
     if (diag != 'I')
@@ -156,47 +122,26 @@ char *mes;
 
 /* - - - - -   MODULE SCANNER  - - - - - */
 
-static void closelisting(VOIDPARM)
-{
-    if (listing)
-	fclose(listing);
-    listing = 0;
-}
-
 /*
     iniscanner - initialize global variables
 */
 static void iniscanner()
 {
     beg_time = time(0);
+    /*
+     * Initial input file is stdin, unless a filename parameter is present.
+     * In that case input comes from that file. Neither stdin nor the input
+     * file is stored in the inputs table.
+     */
+    srcfile = stdin;
     if ((listing = fopen(list_filename, "w")) == 0) {
 	fprintf(stderr, "%s (not open for writing)\n", list_filename);
 	my_exit(0);
     }
-    my_atexit(closelisting);
-    writelisting = 0;
     chr = ' ';
-    linenumber = 0;
     cc = 1;
     ll = 1; /* to enable fatal message during initialisation */
-    memset(specials_repeat, 0, sizeof(specials_repeat)); /* def: no repeats */
-    includelevel = 0;
-    /*
-     * Initial input file is stdin. This is not stored in the inputs table.
-     */
-#if 0
-    inputs[0].fil = stdin;
-    strcpy(inputs[0].nam, "stdin");
-    inputs[0].lastlinenumber = 1;
-#endif
-    adjustment = 0;
     alternative_radix = initial_alternative_radix;
-    lastresword = 0;
-    laststdident = 0;
-    outlinelength = 0;
-    memset(scantimevariables, 0, sizeof(scantimevariables));
-    errorcount = 0;
-    must_repeat_line = false;
 } /* iniscanner */
 
 static void erw(str, symb)
@@ -223,31 +168,15 @@ standardident symb;
 } /* est */
 #endif
 
-static void release(VOIDPARM)
-{
-    int i;
-
-    for (i = 0; i < maxincludelevel; i++)
-	if (inputs[i].fil) {
-	    fclose(inputs[i].fil);
-	    inputs[i].fil = 0;
-	}
-}
-
 static void newfile(str, flag)
 char *str;
 int flag;
 {
-    static unsigned char init;
     FILE *fp;
     char *ptr;
 
-    if (!init) {
-	init = 1;
-	my_atexit(release);
-    }
     if (!flag) {
-	if (!freopen(str, "r", stdin)) {
+	if ((srcfile = fopen(str, "r")) == 0) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
 	    my_exit(0);
 	}
@@ -273,9 +202,10 @@ int flag;
 	 */
 	if (pathname && ptr == str) {
 	    flag = strlen(pathname) + strlen(str) + 1;
-	    ptr = stralloc(flag);
+	    ptr = GC_malloc_atomic(flag);
 	    sprintf(ptr, "%s%s", pathname, str);
 	    fp = fopen(ptr, "r");
+	    GC_free(ptr);
 	}
 	if (!fp) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
@@ -286,16 +216,14 @@ int flag;
     adjustment = 1;
 } /* newfile */
 
-#define dirlength	16
-
 static void perhapslisting()
 {
-    int i;
+    int j;
 
     if (writelisting > 0) {
 	fprintf(listing, "%*d%s", linenumwidth, linenumber, linenumsep);
-	for (i = 0; i < ll; i++)
-	    putc(line[i], listing);
+	for (j = 0; j < ll; j++)
+	    putc(line[j], listing);
 	putc('\n', listing);
 	must_repeat_line = false;
 	fflush(listing);
@@ -320,7 +248,7 @@ static void getch()
 	ll = 0;
 	cc = 0;
 	if (!includelevel) {
-	    if (fgets(line, maxlinelength, stdin)) {
+	    if (fgets(line, maxlinelength, srcfile)) {
 		if ((ptr = strchr(line, '\n')) != 0)
 		    *ptr = 0;
 		ll = strlen(line);
@@ -353,6 +281,11 @@ static value_t value()
     do
 	getch();
     while (chr <= ' ');
+    if (chr == '"') {
+	result = chr;
+	getch();
+	goto einde;
+    }	
     if (chr == '\'' || chr == '&' || isdigit(chr)) {
 	getsym();
 	result = num;
@@ -360,6 +293,7 @@ static value_t value()
     }
     if (isupper(chr)) {
 	result = scantimevariables[chr - 'A'];
+	getsym();
 	goto einde;
     }
     if (chr == '(') {
@@ -419,17 +353,16 @@ einde:
 
 static void directive()
 {
-    int i;
+    int j = 0;
     char c, dir[dirlength + 1];
 
     getch();
-    i = 0;
     do {
-	if (i < dirlength)
-	    dir[i++] = (char)chr;
+	if (j < dirlength)
+	    dir[j++] = (char)chr;
 	getch();
     } while (chr == '_' || isupper(chr));
-    dir[i] = 0;
+    dir[j] = 0;
     if (!strcmp(dir, "IF")) {
 	if (value() < 1)
 	    cc = ll; /* readln */
@@ -438,18 +371,18 @@ static void directive()
 	    point('F', "too many include files");
 	while (chr <= ' ')
 	    getch();
-	i = 0;
+	j = 0;
 	do {
-	    if (i < identlength)
-		ident[i++] = (char)chr;
+	    if (j < identlength)
+		ident[j++] = (char)chr;
 	    getch();
 	} while (chr > ' ');
-	ident[i] = 0;
+	ident[j] = 0;
 	newfile(ident, 1);
     } else if (!strcmp(dir, "PUT")) {
 	fflush(stdout);
-	for (i = cc - 1; i < ll; i++)
-	    fputc(line[i], stderr);
+	for (j = cc - 1; j < ll; j++)
+	    fputc(line[j], stderr);
 	fputc('\n', stderr);
 	cc = ll;
     } else if (!strcmp(dir, "SET")) {
@@ -469,14 +402,16 @@ static void directive()
 	trace = value();
 #endif
     } else if (!strcmp(dir, "LISTING")) {
-	i = writelisting;
+	j = writelisting;
 	writelisting = (int)value();
-	if (!i)
+	if (!j)
 	    perhapslisting();
     } else if (!strcmp(dir, "STATISTICS"))
 	statistics = (int)value();
     else if (!strcmp(dir, "RADIX"))
 	alternative_radix = (int)value();
+    else if (!strcmp(dir, "SETRAW"))
+	SetRaw();
     else
 	point('F', "unknown directive");
     getch();
@@ -488,7 +423,7 @@ static void getsym()
     char c;
 #endif
     boolean negated;
-    int i, j, k, index;
+    int j, k, locat, index, result;
 
 begin:
     ident[index = 0] = 0;	/* start with empty ident and index at 0 */
@@ -512,20 +447,19 @@ begin:
 
 #ifdef MINJOY
     case '"':
-	stringbuf[i = 0] = 0;	/* initialize string */
+	stringbuf[j = 0] = 0;	/* initialize string */
 	getch();
 	while (chr != '"') {
 	    if ((c = chr) == '\\')
 		c = value();
 	    else
 		getch();
-	    if (i >= maxlinelength)
-		point('F', "too many characters in string");
-	    stringbuf[i++] = c;
+	    if (j >= maxlinelength)
+		point('F', "too many chars in string");
+	    stringbuf[j++] = c;
 	}  /* WHILE */
 	getch();
-	stringbuf[i] = 0;	/* finalize string */
-	str = strsave(stringbuf);
+	stringbuf[j] = 0;	/* finalize string */
 	sym = stringconst;
 	break;
 #endif
@@ -608,17 +542,19 @@ again:	    if (index < identlength)
 		ident[index++] = (char)chr;
 	    getch();
 	    ident[index] = 0;
-	    i = 1;
-	    j = lastresword;
-	    do {
-		k = (i + j) / 2;
-		if (strcmp(ident, reswords[k].alf) <= 0)
-		    j = k - 1;
-		if (strcmp(ident, reswords[k].alf) >= 0)
-		    i = k + 1;
-	    } while (i <= j);
-	    if (i - 1 > j)
-		sym = reswords[k].symb;
+	    j = result = 1;
+	    k = lastresword;
+	    while (k >= j) {
+		locat = j + (k - j) / 2;
+		if ((result = strcmp(ident, reswords[locat].alf)) == 0)
+		    break;
+		if (result < 0)
+		    k = locat - 1;
+		else
+		    j = locat + 1;
+	    }
+	    if (!result)
+		sym = reswords[locat].symb;
 	    else {
 		/*
 		 * A reserved word was not recognized, but a special character
@@ -630,6 +566,7 @@ again:	    if (index < identlength)
 		/*
 		 * No second special character was read. It is still possible
 		 * to build an identifier that starts with one special char.
+		 *
 		 * The label "einde" cannot be moved one line further down.
 		 */
 einde:		if (chr == '_' || isalnum(chr)) {
@@ -707,47 +644,47 @@ static void writeline()
 static void writeident(str)
 char *str;
 {
-    int i, length;
+    int j, length;
 
     length = strlen(str);
     if (outlinelength + length > maxoutlinelength)
 	writeline();
-    for (i = 0; i < length; i++)
-	putch(str[i]);
+    for (j = 0; j < length; j++)
+	putch(str[j]);
 }
 
 #ifdef DATBAS
 static void writeresword(char *str)
 {
-    int i, length;
+    int j, length;
 
     for (length = reslength; length && str[length] <= ' '; length--)
 	;
     if (outlinelength + length > maxoutlinelength)
 	writeline();
-    for (i = 0; i < length; i++)
-	putch(str[i]);
+    for (j = 0; j < length; j++)
+	putch(str[j]);
 }
 #endif
 
-static void writenatural(n)
-value_t n;
+static void writenatural(j)
+value_t j;
 {
-    if (n >= 10)
-	writenatural(n / 10);
-    putch((int)(n % 10 + '0'));
+    if (j >= 10)
+	writenatural(j / 10);
+    putch((int)(j % 10 + '0'));
 }
 
-static void writeinteger(i)
-value_t i;
+static void writeinteger(j)
+value_t j;
 {
     if (outlinelength + 12 > maxoutlinelength)
 	writeline();
-    if (i >= 0)
-	writenatural(i);
+    if (j >= 0)
+	writenatural(j);
     else {
 	putch('-');
-	writenatural(-i);
+	writenatural(-j);
     }
 } /* writeinteger */
 #endif

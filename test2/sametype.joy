@@ -1,0 +1,2 @@
+(* Test whether two items have the same datatype *)
+false true sametype.

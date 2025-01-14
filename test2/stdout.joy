@@ -1,0 +1,2 @@
+(* Push the standard output file descriptor *)
+stdout file.

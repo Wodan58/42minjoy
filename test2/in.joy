@@ -1,0 +1,5 @@
+(* See whether an element is member of an aggregate *)
+2 [1 2 3] in.
+4 [1 2 3] in false =.
+'e "test" in.
+'a "test" in false =.

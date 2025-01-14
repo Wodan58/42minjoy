@@ -1,0 +1,2 @@
+(* Unpack a non-empty aggregate into a first and a rest *)
+[1 2 3] unswons stack [1 [2 3]] equal.

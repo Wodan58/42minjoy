@@ -1,0 +1,2 @@
+(* Execute a function destroying the top item *)
+2 20 [succ] unary stack [21 2] equal.

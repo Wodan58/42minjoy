@@ -1,0 +1,2 @@
+(* Execute a program when an item is a string *)
+"test" ["isstring"] ["nostring"] ifstring "isstring" =.

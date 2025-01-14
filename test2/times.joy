@@ -1,0 +1,2 @@
+(* Execute a function a number of times *)
+2 2 [dup *] times 16 =.

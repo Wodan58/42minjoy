@@ -1,0 +1,2 @@
+(* Execute a function without destroying anything *)
+2 20 [succ] nullary stack [21 20 2] equal.

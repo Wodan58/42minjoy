@@ -1,0 +1,2 @@
+(* Basic if-then-else example *)
+1 [0 >] [true] [false] ifte.

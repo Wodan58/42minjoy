@@ -1,0 +1,2 @@
+(* Duplicate the second item in the data area *)
+2 3 dupd stack [3 2 2] equal.

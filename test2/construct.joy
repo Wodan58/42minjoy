@@ -1,0 +1,2 @@
+(* Execute a number of functions on the same data *)
+[2 3] [[+] [*] [-] [/]] construct stack [0 -1 6 5] equal.

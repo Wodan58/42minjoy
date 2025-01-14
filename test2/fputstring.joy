@@ -1,0 +1,2 @@
+(* Write a string to a file *)
+"test" "w" fopen "test" fputstring.

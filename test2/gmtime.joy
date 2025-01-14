@@ -1,0 +1,2 @@
+(* Get the Greenwich mean time *)
+time gmtime 6 take.

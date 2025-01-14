@@ -1,0 +1,2 @@
+(* Calculate the xor function *)
+false true xor.

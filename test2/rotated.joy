@@ -1,0 +1,2 @@
+(* Rotate the subtop three items *)
+1 2 3 4 rotated stack [4 1 2 3] equal.

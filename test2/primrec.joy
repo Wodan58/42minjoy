@@ -1,0 +1,4 @@
+(* Example of primary recursion *)
+[1 2 3 4 5] [0] [+] primrec 15 =.
+5 [1] [*] primrec 120 =.
+"test" [""] [cons] primrec "test" =.

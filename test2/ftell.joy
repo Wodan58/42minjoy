@@ -1,0 +1,5 @@
+(* Report the position in a file *)
+"ftell.joy" "r" fopen	(* fp *)
+0 2 fseek pop		(* fp, removing success condition *)
+ftell			(* fp offset *)
+165 =.			(* offset *)

@@ -1,0 +1,2 @@
+(* Swap elements below the top of the data area *)
+1 2 3 swapd stack [3 1 2] equal.

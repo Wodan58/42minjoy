@@ -1,0 +1,19 @@
+(* Split an aggregate into two *)
+[1 2 3 4 5 6 7 8 9] [5 <] split stack [[5 6 7 8 9] [1 2 3 4]] equal.
+[] unstack.
+[1 2 3 4 5 6 7 8 9] [5 <] split stack [[5 6 7 8 9] [1 2 3 4]] equal.
+[] unstack.
+"test" ['t <] split "tt" =.
+"es" =.
+
+[] unstack.
+[] [2 <] split stack [[] []] equal.
+[] unstack.
+"" ['t <] split "" =.
+"" =.
+
+[] unstack.
+[1 2 3] [] split stack [[] [1 2 3]] equal.
+[] unstack.
+"test" [] split "" =.
+"test" =.

@@ -1,0 +1,2 @@
+(* Test whether an error occurred in a file *)
+"ferror.joy" "r" fopen ferror false =.

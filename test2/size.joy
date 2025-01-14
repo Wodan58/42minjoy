@@ -1,0 +1,6 @@
+(* Determine the number of members of an aggregate *)
+[1 2 3] size 3 =.
+
+"hello, world" size 12 =.
+"naïve" size 5 =.
+"こんにちは" size 5 =.

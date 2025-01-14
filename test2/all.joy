@@ -1,0 +1,11 @@
+(* Tell whether all elements of an aggregate satisfy a condition *)
+[1 2 3] [2 <] all false =.
+[1 2 3] [4 <] all.
+"test" ['t <] all false =.
+"test" ['u <] all.
+
+[] [2 <] all.
+"" ['t <] all.
+
+[1 2 3] [] all.
+"test"  [] all.

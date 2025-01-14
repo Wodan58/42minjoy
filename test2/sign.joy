@@ -1,0 +1,4 @@
+(* Calculate the sign function *)
+-2 sign -1 =.
+0 sign 0 =.
+2 sign 1 =.

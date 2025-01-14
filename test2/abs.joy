@@ -1,0 +1,2 @@
+(* Calculate the absolute value of a number *)
+-1 abs 1 =.

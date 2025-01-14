@@ -1,0 +1,2 @@
+(* Push the standard input file descriptor *)
+stdin file.

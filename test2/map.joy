@@ -1,0 +1,9 @@
+(* Execute a function on each member of an aggregate *)
+[1 2 3] [succ] map [2 3 4] equal.
+"test" [succ] map "uftu" =.
+
+[1 2 3] [] map [1 2 3] equal.
+"test" [] map "test" =.
+
+[] [succ] map [] =.
+"" [succ] map "" =.

@@ -1,0 +1,2 @@
+(* Converts a symbol to a string *)
+[sum] first name "sum" =.

@@ -1,0 +1,2 @@
+(* Convert an integer to a string *)
+1 'd 10 10 format "0000000001" =.

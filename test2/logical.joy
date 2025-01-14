@@ -1,0 +1,2 @@
+(* Test whether an item is a boolean value *)
+true logical.

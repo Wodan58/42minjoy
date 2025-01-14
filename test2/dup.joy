@@ -1,0 +1,2 @@
+(* Duplicate a value by making a shallow copy *)
+2 dup stack [2 2] equal.

@@ -1,0 +1,2 @@
+(* Test whether the end of file has been reached *)
+"feof.joy" "r" fopen feof false =.

@@ -1,0 +1,2 @@
+(* Reduce an aggregate to a scalar *)
+[1 2 3] 0 [+] fold 6 =.

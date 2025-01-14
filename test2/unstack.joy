@@ -1,0 +1,2 @@
+(* Replace the data area by the contents of a list *)
+[1 2 3] unstack 1 =.

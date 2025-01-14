@@ -1,0 +1,2 @@
+(* Calculate the Ackermann function *)
+[[4 0]] [i swap ack] map [13] equal.

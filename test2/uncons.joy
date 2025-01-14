@@ -1,0 +1,8 @@
+(* Unpack a non-empty aggregate into a first and a rest *)
+[1 2 3] uncons stack [[2 3] 1] equal.
+
+"hello, world" uncons pop 'h =.
+
+"ïve" uncons pop '\239 =.
+
+"こんにちは" uncons pop "" cons "こ" =.

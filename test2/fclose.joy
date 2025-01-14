@@ -1,0 +1,2 @@
+(* Close an open file *)
+"fclose.joy" "r" fopen fclose.

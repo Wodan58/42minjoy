@@ -1,0 +1,8 @@
+(* Add an element to the front of an aggregate *)
+1 [2 3] cons [1 2 3] equal.
+
+"ello, world" 'h swap cons "hello, world" =.
+
+'\239 "ve" cons "ïve" =.
+
+"こ" uncons pop "んにちは" cons "こんにちは" =.

@@ -1,0 +1,2 @@
+(* Return -1, 0, or 1 depending on comparison *)
+"test" "test" compare 0 =.

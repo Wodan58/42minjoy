@@ -1,0 +1,2 @@
+(* Execute a function destroying two items *)
+3 4 5 [+] binary stack [9 3] equal.

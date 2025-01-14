@@ -1,0 +1,2 @@
+(* Convert a string to a number *)
+"10" 0 strtol 10 =.

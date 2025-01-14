@@ -1,0 +1,2 @@
+(* Calculate the remainder of an integer division *)
+54 24 rem 6 =.

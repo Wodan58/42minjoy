@@ -1,0 +1,2 @@
+(* Convert an integer into a character *)
+10 chr '\010 =.

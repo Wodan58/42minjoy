@@ -1,0 +1,2 @@
+(* Check that an empty aggregate is indeed null *)
+[] null.

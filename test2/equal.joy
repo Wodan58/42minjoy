@@ -1,0 +1,2 @@
+(* Checks whether two lists or items are equal *)
+[1 2 3] [1 2 3] equal.

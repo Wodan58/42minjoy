@@ -1,0 +1,2 @@
+(* Execute a program when an item is a list *)
+[1 2 3] ["islist"] ["nolist"] iflist "islist" =.

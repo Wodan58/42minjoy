@@ -1,0 +1,2 @@
+(* Test equality of number and character *)
+65 'A =.

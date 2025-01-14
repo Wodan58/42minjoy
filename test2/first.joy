@@ -1,0 +1,2 @@
+(* Extract the first element of an aggregate *)
+[1 2 3] first 1 =.

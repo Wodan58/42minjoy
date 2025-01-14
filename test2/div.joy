@@ -1,0 +1,2 @@
+(* Divide integers into quotient and remainder *)
+54 24 div stack [6 2] equal.

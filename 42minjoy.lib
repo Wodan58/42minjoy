@@ -1,26 +1,24 @@
 (*  vi: filetype=joy
 
     module  : 42minjoy.lib
-    version : 1.8
-    date    : 12/13/24
+    version : 1.9
+    date    : 01/14/25
 
     Set F to 1 : include definition for fib
     Set F to 0 : exclude definition for fib
-
-    P is set to 3: the library is read only once.
 *)
 %SET F = 1
 
-%IF  = P 0  %SET  P = 3
-%IF  = P 1  %PUT First pass through library:
-%IF  = P 2  %PUT Second pass through library:
-%IF  = P 3  %PUT Single pass through library:
+(*
+    Announce loading of the library.
+*)
+%PUT 42minjoy.lib  is loaded
 								(*
 I1 I2	*		==  I3		where I3 = (I1 * I2)	 *
 I1 I2	+		==  I3		where I3 = (I1 + I2)	 *
 I1 I2	-		==  I3		where I3 = (I1 - I2)	 *
 I1 I2	/		==  I3		where I3 = (I1 / I2)	 *
-I1 I2	<		==  B		where B	 = (I1 < I2)	 *
+I1 I2	<		==  B		where B  = (I1 < I2)	 *
 								 *)
 	!=		==  = not				 ;
 								(*
@@ -29,7 +27,7 @@ I1 I2	<		==  B		where B	 = (I1 < I2)	 *
 	<=		==  > not				 ;
 	<>		==  = not				 ;
 								(*
-I1 I2	=		==  B		where B	 =  (I1 = I2)	 *
+I1 I2	=		==  B		where B  = (I1 = I2)	 *
 								 *)
 	>		==  swap <				 ;
 								(*
@@ -37,23 +35,37 @@ I1 I2	=		==  B		where B	 =  (I1 = I2)	 *
 								 *)
 	>=		==  < not				 ;
 	abs		==  dup 0 < [[] [neg]] of i		 ;
+	ack		==  [[[null] [pop succ]]
+			    [[pop null] [popd pred 1 swap] []]
+			    [[dup rollup [pred] dip] [swap pred
+			    ack]]] condlinrec			 ;
 								(*
 	addlist		==  [+] zip				 *
 								 *
 B1 B2	and		==  B3		where B3 = (B1 and B2)	 *
 								 *)
+	at		==  swap of				 ;
 	b		==  [i] dip i				 ;
+	binary		==  unary popd				 ;
 	boolean		==  true sametype			 ;
 	branch		==  swap pair of i			 ;
-	c		==  [swap] dip i			 ;
+	c		==  swapd i			 	 ;
+	call		==  [] cons i				 ;
 	car		==  uncons pop				 ;
 	cdr		==  uncons swap pop			 ;
 	char		==  'A sametype				 ;
+	choice		==  [pop pop] [pop popd] [popd popd] ifte;
+	chr		==  5 casting				 ;
 	clearstack	==  [] unstack				 ;
 	clearstack1	==  [clearstack] dip			 ;
 	cnos		==  swap cons				 ;
-	concat		==  [reverse] c shunt			 ;
+	cnr_ack		==  [[[pop null] [popd succ]]
+			    [[null] [pop pred 1] []]
+			    [[[dup pred swap] dip pred] [] []]]
+			    condnestrec				 ;
 								(*
+	concat		==  [reverse] c shunt			 *
+
 X [Xs]	cons		==  [X Xs]				 *
 nothing [Xs] cons	==  [Xs]				 *
 								 *)
@@ -73,16 +85,19 @@ X	dup		==  X X					 *
 								 *)
 	dupd		==  [dup] dip				 ;
 	dureco		==  dup rest cons			 ;
+	enconcat	==  swapd cons concat			 ;
 								(*
 Lists must be tested with equal. Empty lists can be tested with  *
 =. Members of a list are compared with =. Equal can be used      *
 instead of = in case it is unknown whether one or the other of   *
 the two operands might be a list.				 *
+								 *
+	equal		==  dup [] sametype [[=] [dup [] =	 *
+			    [[[uncons] dip swap [uncons] dip	 *
+			    cons [equal] dip uncons equal and]	 *
+			    [=]] of i]] of i			 *
 								 *)
-	equal		==  dup [] sametype [[=] [dup [] =
-			    [[[uncons] dip swap [uncons] dip
-			    cons [equal] dip uncons equal and]
-			    [=]] of i]] of i			 ;
+	even		==  2 div popd 0 =			 ;
 	exp		==  dup 0 =
 			    [pop pop 1] [[dup] dip 1 - exp *]
 			    branch				 ;
@@ -98,38 +113,58 @@ the two operands might be a list.				 *
 								 *)
 	first		==  uncons pop				 ;
 	fix		==  [duco] first swap cons duco		 ;
-	fold		==  [swap] dip step			 ;
+	fold		==  swapd step			 	 ;
+	fourth		==  3 drop first			 ;
+	fputstring	==  fputchars				 ;
 								(*
 	foldl		==  [] rollup stepl			 ;
 	foldr		==  [] rollup stepr			 ;
 								 *)
+	g_fib		==  [2 <] [pop 1] [pred dup pred]
+			    [unary2 +] genrec			 ;
+	has		==  swap in				 ;
 	hidefirst	==  dip					 ;
-	hidesecond	==  [swap] dip dip swap			 ;
+	hidesecond	==  swapd dip swap			 ;
 								(*
 [Fs]	i		==  Fs					 *
 								 *)
 	id		==  [] pop				 ;
-	infra		==  [infra1] unary			 ;
+	ifchar		==  [char] rollup ifte			 ;
+	iffile		==  [file] rollup ifte			 ;
+	ifinteger	==  [integer] rollup ifte		 ;
+	iflist		==  [list] rollup ifte			 ;
+	iflogical	==  [logical] rollup ifte		 ;
+	ifstring	==  [string] rollup ifte		 ;
+								(*
+	in		==  swap contains			 *
+								 *)
+	infra		==  [infra1] binary			 ;
 	infra1		==  [unstack] dip i solostack		 ;
 	integer		==  0 sametype				 ;
 
 %INCLUDE 42minjoy.joy
 
-	k		==  [pop] dip i				 ;
-	last		==  dup rest null
-			    [first] [rest last] branch		 ;
+	k		==  popd i				 ;
+								(*
+	last		==  dup rest null			 *
+			    [first] [rest last] branch		 *)
+	last		==  dup size pred at			 ;
 	leaf		==  list not				 ;
-	length		==  0 [pop 1 +] fold			 ;
-	lengthold	==  0 swap [pop 1 +] step		 ;
+	length		==  0 [pop succ] fold			 ;
+	lengthold	==  0 swap [pop succ] step		 ;
 	list		==  [] sametype				 ;
 	logical		==  false sametype			 ;
-	map		==  maprev reverse			 ;
-	maprev		==  [] rollup shuntmap			 ;
-	member		==  swap contains			 ;
+								(*
+	map		==  maprev reverse			 *
+	maprev		==  [] rollup shuntmap			 *
+								 *)
+	max		==  [<] [popd] [pop] ifte		 ;
+	member		==  in			 		 ;
+	min		==  [<] [pop] [popd] ifte		 ;
 	mm		==  [pair] dip map unpair		 ;
 	mullists	==  [*] zip				 ;
 	neg		==  0 swap -				 ;
-	newline		==  '\10 put				 ;
+	newline		==  '\010 put				 ;
 	nil		==  []					 ;
 								(*
 B1      not		==  B2	  where B2 = not B1		 *
@@ -137,12 +172,17 @@ B1      not		==  B2	  where B2 = not B1		 *
 	null		==  car nothing sametype		 *
 								 *)
 	null		==  nil =				 ;
+	null2		==  nulld null or			 ;
 	nullary		==  stack swap dip rest cons unstack     ;
+	nulld		==  [null] dip				 ;
 								(*
 B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
 								 *)
-	over		==  [dup] dip swap			 ;
+	odd		==  2 div popd 1 =			 ;
+	ord		==  6 casting				 ;
+	over		==  dupd swap				 ;
 	pair		==  [] cons cons			 ;
+	pairlist	==  [] cons cons			 ;
 	pairlists	==  [pair] zip				 ;
 	partition	==  [[][]] dip
 			    dup
@@ -166,6 +206,7 @@ B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
 								(*
 X       pop		==					 *
 								 *)
+	pop2		==  pop pop				 ;
 	popd		==  [pop] dip				 ;
 	pred		==  1 -					 ;
 	product		==  1 [*] fold				 ;
@@ -178,6 +219,8 @@ X       pop		==					 *
 				     quicksort both,
 				     concatenate them
 								*)
+	qsort		==  [small] [] [uncons [>] split]
+			    [swapd cons concat] binrec;
 	quicksort	==  dup small
 			    []
 			    [ partition
@@ -191,26 +234,37 @@ X       pop		==					 *
 			      concat ]
 			    branch				 ;
 	rem		==  over over / * -			 ;
-	rest		==  uncons swap pop			 ;
+	rest		==  1 drop				 ;
 	reverse		==  [] swap shunt			 ;
 	rmap		==  [] swap [[swap cons] b] cons fold    ;
-	rolldown	==  [swap] dip swap			 ;
-	rollup		==  swap [swap] dip			 ;
+	rolldown	==  swapd swap				 ;
+	rolldownd	==  [rolldown] dip			 ;
+	rollup		==  swap swapd				 ;
+	rollupd		==  [rollup] dip			 ;
+	rotate		==  rolldown swapd			 ;
+	rotated		==  [rotate] dip			 ;
 	second		==  rest first				 ;
+	sequand		==  [pop false] ifte			 ;
+	sequor		==  [pop true] swap ifte		 ;
 
 %INCLUDE 42minjoy.ses
 
 	shunt		==  [cnos] step			 	 ;
 	shuntmap	==  [[cnos] b] cons step		 ;
-	size		==  0 [pop succ] fold			 ;
+	sign		==  [0 <] [pop -1] [[0 >] [pop 1] [] ifte]
+			    ifte				 ;
 								(*
+	size		==  0 [pop succ] fold			 *
 	small		==  uncons null swap pop		 *
 								 *)
 	small		==  dup null [[rest null] [pop true]]
 			    of i				 ;
 	solostack	==  stack [clearstack] dip		 ;
-	space		==  '\32	(* one space *)		 ;
+	space		==  '\032	(* one space *)		 ;
 	square		==  dup *				 ;
+	strchr		==  swap [["" =] [first =] sequor not]
+			    [rest] while popd			 ;
+	string		==  "" sametype				 ;
 	succ		==  1 +					 ;
 	sum		==  0 [+] fold				 ;
 								(*
@@ -219,26 +273,37 @@ X       pop		==					 *
 X Y	swap		==  Y X					 *
 								 *)
 	swapd		==  [swap] dip				 ;
+	swoncat		==  swap concat				 ;
+	swons		==  swap cons				 ;
+	ternary		==  binary popd				 ;
+	third		==  2 drop first			 ;
 	thrice		==  dup [twice] dip i			 ;
-	times		==  swap times_				 ;
-	times_		==  dup 0 =
-			    [pop pop]
-			    [[dup [i] dip] dip pred times_]
-			    branch				 ;
+								(*
+	times		==  swap times_				 *
+	times_		==  dup 0 =				 *
+			    [pop pop]				 *
+			    [[dup [i] dip] dip pred times_]	 *
+			    branch				 *
+								 *)
+	treemap		==  [] [map] treegenrec			 ;
+	treesample	==  [[1 2 [3 4] 5 [[[6]]] 7] 8]		 ;
 	twice		==  dup b				 ;
-	unary		==  nullary [pop] dip			 ;
+	unary		==  nullary popd			 ;
 								(*
 [X Xs]	uncons		==  X [Xs]				 *
 []	uncons		==  nothing []				 *
 								 *)
+	uncons2		==  unconsd uncons swapd		 ;
+	unconsd		==  [uncons] dip			 ;
 	unit		==  [] cons				 ;
 	unpair		==  uncons uncons pop			 ;
+	unswons		==  uncons swap				 ;
+	unwrap		==  [] step				 ;
 	user		==  [zzz] first sametype		 ;
-	w		==  [dup] dip i				 ;
+	w		==  dupd i				 ;
+	wrap		==  [] swap [cons] times		 ;
 	x		==  dup i				 ;
 	y		==  fix i				 ;
-	zzz		==  zzz
-
-%IF  = P 2  %PUT GO !
-%SET  P = 2
-.
+	zip		==  [null2] [pop2 []] [uncons2]
+			    [[swons] dip cons] linrec		 ;
+	zzz		==  zzz		(* sentinel *)		 .

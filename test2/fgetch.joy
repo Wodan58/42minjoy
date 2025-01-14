@@ -1,0 +1,2 @@
+(* Read a character from the given file descriptor *)
+"fgetch.joy" "r" fopen fgetch '( =.

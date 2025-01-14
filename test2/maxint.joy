@@ -1,0 +1,2 @@
+(* Push the maximum signed integer value *)
+maxint 9223372036854775807 =.

@@ -1,0 +1,8 @@
+(* mktime *)
+time dup
+dup putln
+localtime
+dup putln
+mktime
+dup putln
+=.

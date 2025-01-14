@@ -1,0 +1,2 @@
+(* Execute a unary program twice *)
+2 3 [succ] unary2 stack [4 3] equal.

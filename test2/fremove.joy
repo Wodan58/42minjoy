@@ -1,0 +1,3 @@
+(* Remove a file *)
+"test" "w" fopen fclose.
+"test" fremove.

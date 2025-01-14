@@ -1,0 +1,2 @@
+(* Write a factor to a file *)
+"test" "w" fopen [1 2 3] fput.

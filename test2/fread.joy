@@ -1,0 +1,2 @@
+(* Read a number of bytes from an open file *)
+"fread.joy" "r" fopen 7 fread [40 42 32 82 101 97 100] equal.

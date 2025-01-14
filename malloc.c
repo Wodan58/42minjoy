@@ -1,23 +1,25 @@
 /*
     module  : malloc.c
-    version : 1.1
-    date    : 12/13/24
+    version : 1.2
+    date    : 01/14/25
 */
 #include <stdio.h>
 #include "malloc.h"
 
-#define HEAP_SIZE	15000
+#ifndef MAXHEAP
+#define MAXHEAP 	6000
+#endif
 
 heap_t *free_list;
 
 static void init_heap()
 {
-    static heap_t heap_area[HEAP_SIZE];
+    static heap_t heap_area[MAXHEAP + 1];
     heap_t *cur;
 
     cur = heap_area;
-    cur->size = HEAP_SIZE / sizeof(heap_t);	/* number of heap blocks */
-    my_free(cur + 1);				/* release user-area */
+    cur->size = MAXHEAP;	/* number of heap blocks */
+    my_free(cur + 1);		/* release user-area */
 }
 
 void *my_malloc(size)

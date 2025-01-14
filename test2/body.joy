@@ -1,0 +1,2 @@
+(* Get the replacement of a symbol from the symbol table *)
+[sum] first body [0 [+] fold] equal.

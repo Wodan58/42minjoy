@@ -1,0 +1,2 @@
+(* Leave the application with a return code 0 *)
+quit.

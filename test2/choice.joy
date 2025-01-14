@@ -1,0 +1,2 @@
+(* Make a choice between two values *)
+true 1 2 choice 1 =.

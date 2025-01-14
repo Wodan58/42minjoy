@@ -1,0 +1,2 @@
+(* Subtract two signed numbers *)
+2 3 - -1 =.

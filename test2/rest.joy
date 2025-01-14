@@ -1,0 +1,2 @@
+(* Drop the first member of a non-empty aggregate *)
+[1 2 3] rest [2 3] equal.

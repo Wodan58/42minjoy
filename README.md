@@ -24,22 +24,6 @@ Installation
     rm -rf build
     mkdir build
     cd build
-    cmake -G "Unix Makefiles" ..
+    CC=gcc CXX=gcc cmake -G "Unix Makefiles" ..
     cmake --build .
     cp joy.exe ..
-
-Debugging
----------
-
-Although this software contains almost no bugs, steps have been taken that make
-debugging easier. For a start, gdb requires that input comes from a file, so a
-typical session will be:
-
-    gdb joy
-    ...
-    run tutorial.joy
-    ...
-    quit
-
-If the program crashes gdb sometimes answers to the command `bt` with: No stack.
-In that case, LOGFILE or printf calls can be added to or in some functions.

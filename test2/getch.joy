@@ -1,0 +1,3 @@
+(* Read a character from input *)
+getch 'A =.
+A

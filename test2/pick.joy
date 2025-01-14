@@ -1,0 +1,2 @@
+(* Duplicate a value from way down on top *)
+1 2 3 4 5 2 pick 3 =.

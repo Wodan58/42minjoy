@@ -1,0 +1,3 @@
+(* Rename a file *)
+"test" "w" fopen fclose.
+"test" "dummy" frename.

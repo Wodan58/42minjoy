@@ -1,0 +1,2 @@
+(* Execute two programs on the same parameter *)
+[1 2 3] [sum] [size] cleave / 2 =.

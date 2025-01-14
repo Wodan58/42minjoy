@@ -1,0 +1,2 @@
+(* Delete the second item in the data area *)
+1 2 popd 2 =.

@@ -1,0 +1,2 @@
+(* Example of unnecessary binary recursion *)
+10 [2 <] [] [pred dup pred] [+] binrec 55 =.

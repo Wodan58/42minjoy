@@ -1,0 +1,2 @@
+(* Move the top two items one position down *)
+1 2 3 rolldown stack [1 3 2] equal.

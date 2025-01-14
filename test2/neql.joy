@@ -1,0 +1,2 @@
+(* Verify that integer and character are unequal *)
+'A 64 !=.

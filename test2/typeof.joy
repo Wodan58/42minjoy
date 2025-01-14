@@ -1,0 +1,2 @@
+(* Get the numeric value of a type *)
+[pop] first typeof 1 =.

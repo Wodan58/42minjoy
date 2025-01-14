@@ -1,0 +1,3 @@
+(* Read a line from a file *)
+
+"fgets.joy" "r" fopen fgets "(* Read a line from a file *)\010" =.

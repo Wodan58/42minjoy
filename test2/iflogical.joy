@@ -1,0 +1,2 @@
+(* Execute a program when an item is a boolean value *)
+true ["islogical"] ["nological"] iflogical "islogical" =.

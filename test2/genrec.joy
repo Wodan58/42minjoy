@@ -1,0 +1,21 @@
+(* Use genrec to calculate the Fibonacci function *)
+
+(*
+This uses the original definition of the man himself. Starting with 1 pair
+of rabbits in month 0, how many rabbits are there in month n? Rabbits start
+multiplying after two months.
+*)
+
+ 0 g_fib 1 =.
+ 1 g_fib 1 =.
+ 2 g_fib 2 =.
+ 3 g_fib 3 =.
+ 4 g_fib 5 =.
+ 5 g_fib 8 =.
+ 6 g_fib 13 =.
+ 7 g_fib 21 =.
+ 8 g_fib 34 =.
+ 9 g_fib 55 =.
+10 g_fib 89 =.
+11 g_fib 144 =.
+12 g_fib 233 =.

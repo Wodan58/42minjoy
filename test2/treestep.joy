@@ -1,0 +1,3 @@
+(* Use treestep to flatten a tree *)
+[] treesample [swons] treestep
+[8 7 6 5 4 3 2 1] equal.

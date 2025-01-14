@@ -1,0 +1,2 @@
+(* Retrieve the value of an environment variable *)
+"PATH" getenv.

@@ -1,0 +1,6 @@
+(* Discard an initial part of an aggregate *)
+[1 2 3] 2 drop [3] equal.
+
+"hello, world" 2 drop "llo, world" =.
+"naïve" 2 drop "ïve" =.
+"こんにちは" 2 drop "にちは" =.

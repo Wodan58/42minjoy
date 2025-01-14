@@ -1,0 +1,2 @@
+(* Flush the stdout stream *)
+stdout fflush stdout =.

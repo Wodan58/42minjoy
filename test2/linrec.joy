@@ -1,0 +1,2 @@
+(* Calculate the factorial function using linrec *)
+5 [0 =] [succ] [dup pred] [*] linrec 120 =.

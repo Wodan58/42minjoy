@@ -1,0 +1,2 @@
+(* Calculate the Ackermann function *)
+3 4 cnr_ack 125 =.

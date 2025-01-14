@@ -1,0 +1,2 @@
+(* Test whether an item is a user defined function *)
+[sum] first user.

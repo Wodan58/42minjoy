@@ -1,0 +1,2 @@
+(* Execute a function destroying three items *)
+1 2 3 4 5 [+] ternary stack [9 2 1] equal.

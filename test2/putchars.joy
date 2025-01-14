@@ -1,0 +1,2 @@
+(* Output a string without double quotes *)
+"test" putchars.

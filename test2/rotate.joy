@@ -1,0 +1,2 @@
+(* Rotate the top three items *)
+1 2 3 rotate stack [1 2 3] equal.

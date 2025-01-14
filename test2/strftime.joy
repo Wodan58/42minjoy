@@ -1,0 +1,2 @@
+(* Convert a time to a string *)
+time localtime "%c" strftime putchars.

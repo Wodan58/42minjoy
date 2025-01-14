@@ -7,8 +7,10 @@
 This is a small version of Joy and because of that has fewer bugs than the full
 version.
 
-The reason for maintaining this version of Joy is that it is an order of
-magnitude smaller than the full version.
+The reason for maintaining this version of Joy is that it can serve as a test
+environment for new features, precisely because it is smaller than the full
+version and also there is no need to have it fully compatible with the full
+version.
 
 And it has some features that are not present in full Joy, such as scantime
 expression evaluation.
@@ -58,4 +60,6 @@ Comments
 
 Compiling on old machines shows that the software is portable.
 
-Speed of execution is not so relevant anymore.
+Speed of execution is not so relevant anymore, but it does show that a
+multi-tasking OS such as MINIX is slower when executing a single task than a
+single-tasking OS.

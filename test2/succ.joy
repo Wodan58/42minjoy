@@ -1,0 +1,2 @@
+(* Use the successor function to discover the next character *)
+'A succ 'B =.

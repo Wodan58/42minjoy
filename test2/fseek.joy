@@ -1,0 +1,2 @@
+(* Seek forward in an open file *)
+"fseek.joy" "r" fopen 7 0 fseek null.

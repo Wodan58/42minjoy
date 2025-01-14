@@ -1,0 +1,2 @@
+(* Get the local time *)
+time localtime 6 take.

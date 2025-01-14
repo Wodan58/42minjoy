@@ -1,0 +1,2 @@
+(* Execute a unary program four times *)
+2 3 4 5 [succ] unary4 stack [6 5 4 3] equal.

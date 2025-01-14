@@ -1,0 +1,2 @@
+(* Remove a value from the data area *)
+1 2 pop 1 =.

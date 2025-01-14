@@ -1,0 +1,2 @@
+(* Truth value, testing not *)
+false not.

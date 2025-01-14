@@ -1,0 +1,2 @@
+(* Capture the name of this program *)
+argv 1 at "argv.joy" =.

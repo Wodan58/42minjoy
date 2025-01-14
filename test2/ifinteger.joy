@@ -1,0 +1,2 @@
+(* Execute a program when an item is an integer *)
+1 ["isinteger"] ["nointeger"] ifinteger "isinteger" =.

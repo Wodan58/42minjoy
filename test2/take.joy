@@ -1,0 +1,6 @@
+(* Extract an initial segment of an aggregate *)
+[1 2 3] 2 take [1 2] equal.
+
+"hello, world" 3 take "hel" =.
+"naïve" 3 take "naï" =.
+"こんにちは" 3 take "こんに" =.

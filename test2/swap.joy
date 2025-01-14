@@ -1,0 +1,2 @@
+(* Test reorder of data *)
+1 2 swap stack [1 2] equal.

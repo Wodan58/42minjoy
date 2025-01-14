@@ -1,0 +1,5 @@
+(* See whether an element is member of an aggregate *)
+[1 2 3] 2 has.
+[1 2 3] 4 has false =.
+"test" 'e has.
+"test" 'a has false =.

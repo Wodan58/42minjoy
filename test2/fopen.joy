@@ -1,0 +1,2 @@
+(* Open a file for reading *)
+"fopen.joy" "r" fopen null not.

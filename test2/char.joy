@@ -1,0 +1,2 @@
+(* Test whether an item is a character *)
+'\010 char.
