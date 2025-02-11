@@ -1,4 +1,4 @@
 (* Select a line based on the value of the second parameter *)
-1 [[1 "one"]
+2 [[1 "one"]
    [2 "two"]
-   ["other"]] case "one" =..
+   ["other"]] case "two" =..

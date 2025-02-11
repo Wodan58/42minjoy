@@ -1,9 +1,15 @@
+(*
+    module  : 42minjoy.joy
+    version : 1.4
+    date    : 02/10/25
+*)
+
 (* the JOY interpreter written in JOY				*)
 
 joy	==
     [	[
 						(* PUSH DATA:	*)
-	    [ nothing ]				(* type void	*)
+	    [ zzz ]				(* type void	*)
 	    [ false ]				(* Booleans	*)
 	    [ 'A ]				(* characters   *)
 	    [ 0 ]				(* numbers      *)
@@ -15,7 +21,7 @@ joy	==
 	    [ swap      pop swap ]
 	    [ cons      pop cons ]
 	    [ uncons    pop uncons ]
-	    [ select    pop opcase ]
+	    [ opcase    pop opcase ]
 	    [ *	        pop * ]
 	    [ +	        pop + ]
 	    [ -	        pop - ]

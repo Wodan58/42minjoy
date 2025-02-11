@@ -1,13 +1,16 @@
 /*
     module  : gc.c
-    version : 1.2
-    date    : 01/14/25
+    version : 1.3
+    date    : 02/10/25
 */
 #include <string.h>
 #include "malloc.h"
 
+/*
+ * Set to allow playing tutorial.joy with minimal library support.
+ */
 #ifndef MAXSTRTAB
-#define MAXSTRTAB	4000
+#define MAXSTRTAB	500
 #endif
 
 #ifdef NPROTO
@@ -88,7 +91,7 @@ size_t size;
     }
     strtable[strindex++] = ptr;		/* remember return from my_malloc */
     *ptr++ = 1;				/* allocate from index 0 and mark */
-    return ptr;				/* return user area */
+    return (void *)ptr;			/* return user area */
 }
 
 char *GC_strdup(str)

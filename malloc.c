@@ -1,13 +1,16 @@
 /*
     module  : malloc.c
-    version : 1.2
-    date    : 01/14/25
+    version : 1.3
+    date    : 02/10/25
 */
 #include <stdio.h>
 #include "malloc.h"
 
+/*
+ * Set to allow playing tutorial.joy with minimal library support.
+ */
 #ifndef MAXHEAP
-#define MAXHEAP 	6000
+#define MAXHEAP 	2000
 #endif
 
 heap_t *free_list;
@@ -47,7 +50,7 @@ size_t size;
 		cur += cur->size;
 		cur->size = size;		/* upper part */
 	    }
-	    return cur + 1;			/* user area */
+	    return (void *)(cur + 1);		/* user area */
 	}
     return 0;
 }

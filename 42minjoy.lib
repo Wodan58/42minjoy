@@ -1,133 +1,148 @@
-(*  vi: filetype=joy
-
+(*
     module  : 42minjoy.lib
-    version : 1.9
-    date    : 01/14/25
-
-    Set F to 1 : include definition for fib
-    Set F to 0 : exclude definition for fib
+    version : 1.10
+    date    : 02/10/25
 *)
-%SET F = 1
+
+(*
+    Set G to 1 : include G3 definitions
+    Set G to 0 : exclude G3 definitions
+
+    Set A to 2 : include MINIX definitions for ATARI ST
+    Set A to 1 : include Unix/Windows definitions for PC
+    Set A to 0 : exclude G3 definitions
+
+    Set E to 1 : include extra's, not needed for tutorial.joy
+    Set E to 0 : exclude extra's
+*)
+%SET G = 0
+%SET A = 0
+%SET E = 0
 
 (*
     Announce loading of the library.
 *)
 %PUT 42minjoy.lib  is loaded
-								(*
-I1 I2	*		==  I3		where I3 = (I1 * I2)	 *
-I1 I2	+		==  I3		where I3 = (I1 + I2)	 *
-I1 I2	-		==  I3		where I3 = (I1 - I2)	 *
-I1 I2	/		==  I3		where I3 = (I1 / I2)	 *
-I1 I2	<		==  B		where B  = (I1 < I2)	 *
-								 *)
+
 	!=		==  = not				 ;
-								(*
-	<=		==  succ <				 *
-								 *)
 	<=		==  > not				 ;
 	<>		==  = not				 ;
-								(*
-I1 I2	=		==  B		where B  = (I1 = I2)	 *
-								 *)
 	>		==  swap <				 ;
-								(*
-	>=		==  pred >				 *
-								 *)
 	>=		==  < not				 ;
+
+(*
+    The lang.joy file is loaded from the working directory.
+*)
+%IF = G 1 %INCLUDE lang.joy
+%IF = G 1 %INCLUDE G3/keys.joy
+%IF = G 1 %INCLUDE G3/variables.joy
+
 	abs		==  dup 0 < [[] [neg]] of i		 ;
+
+%IF = G 1 %INCLUDE G3/account.joy
+
 	ack		==  [[[null] [pop succ]]
 			    [[pop null] [popd pred 1 swap] []]
 			    [[dup rollup [pred] dip] [swap pred
 			    ack]]] condlinrec			 ;
-								(*
-	addlist		==  [+] zip				 *
-								 *
-B1 B2	and		==  B3		where B3 = (B1 and B2)	 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/amount.joy
+
+	append		==  [] cons concat			 ;
 	at		==  swap of				 ;
 	b		==  [i] dip i				 ;
+
+%IF = G 1 %INCLUDE G3/balance.joy
+%IF = G 1 %INCLUDE G3/bank.joy
+
 	binary		==  unary popd				 ;
 	boolean		==  true sametype			 ;
-	branch		==  swap pair of i			 ;
+
+%IF = G 1 %INCLUDE G3/box.joy
+
+	branch		==  swap pairlist of i			 ;
 	c		==  swapd i			 	 ;
 	call		==  [] cons i				 ;
 	car		==  uncons pop				 ;
+
+%IF = G 1 %INCLUDE G3/cash.joy
+
 	cdr		==  uncons swap pop			 ;
 	char		==  'A sametype				 ;
 	choice		==  [pop pop] [pop popd] [popd popd] ifte;
 	chr		==  5 casting				 ;
 	clearstack	==  [] unstack				 ;
 	clearstack1	==  [clearstack] dip			 ;
+
+%IF = G 1 %INCLUDE G3/closing.joy
+%IF = G 1 %INCLUDE G3/clear.joy
+
 	cnos		==  swap cons				 ;
 	cnr_ack		==  [[[pop null] [popd succ]]
 			    [[null] [pop pred 1] []]
 			    [[[dup pred swap] dip pred] [] []]]
 			    condnestrec				 ;
-								(*
-	concat		==  [reverse] c shunt			 *
 
-X [Xs]	cons		==  [X Xs]				 *
-nothing [Xs] cons	==  [Xs]				 *
-								 *)
+%IF = G 1 %INCLUDE G3/color.joy
+
 	construct0	==  [dip swap] map			 ;
 	construct1	==  [[dip swap] map] unary		 ;
 	construct2	==  [[nullary] cons dip swap] map	 ;
 	contains	==  false swap [= or] cons fold 	 ;
 	cube		==  dup dup * *				 ;
+
+%IF = G 1 %INCLUDE G3/cursor.joy
+%IF = G 1 %INCLUDE G3/datein.joy
+
 	definition	==  first body				 ;
-								(*
-X [Fs]	dip		==  Fs X				 *
-								 *)
-	dip2		==  [pair] dip dip unpair		 ;
+	dip2		==  [pairlist] dip dip unpair		 ;
 	duco		==  dup cons				 ;
-								(*
-X	dup		==  X X					 *
-								 *)
 	dupd		==  [dup] dip				 ;
 	dureco		==  dup rest cons			 ;
+
+%IF = G 1 %INCLUDE G3/editmul.joy
+%IF = G 1 %INCLUDE G3/editsgl.joy
+
 	enconcat	==  swapd cons concat			 ;
-								(*
-Lists must be tested with equal. Empty lists can be tested with  *
-=. Members of a list are compared with =. Equal can be used      *
-instead of = in case it is unknown whether one or the other of   *
-the two operands might be a list.				 *
-								 *
-	equal		==  dup [] sametype [[=] [dup [] =	 *
-			    [[[uncons] dip swap [uncons] dip	 *
-			    cons [equal] dip uncons equal and]	 *
-			    [=]] of i]] of i			 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/entry.joy
+
 	even		==  2 div popd 0 =			 ;
+
+%IF = G 1 %INCLUDE G3/exit.joy
+
 	exp		==  dup 0 =
 			    [pop pop 1] [[dup] dip 1 - exp *]
 			    branch				 ;
 	factorial_rec	==  dup 1 <=
 			    [pop 1] [dup pred factorial_rec *]
 			    branch				 ;
+	fib		==  [2 <] [] [pred dup pred] [+] binrec	 ;
 
-%IF = F 1 %INCLUDE fib.lib
+%IF = G 1 %INCLUDE G3/field.joy
 
+	fifth		==  4 drop first			 ;
 	file		==  stdin sametype			 ;
-								(*
-	filter		==  [test] cons [] [cons] stepl		 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/filter.joy
+
 	first		==  uncons pop				 ;
 	fix		==  [duco] first swap cons duco		 ;
 	fold		==  swapd step			 	 ;
 	fourth		==  3 drop first			 ;
 	fputstring	==  fputchars				 ;
-								(*
-	foldl		==  [] rollup stepl			 ;
-	foldr		==  [] rollup stepr			 ;
-								 *)
 	g_fib		==  [2 <] [pop 1] [pred dup pred]
 			    [unary2 +] genrec			 ;
+
+%IF = G 1 %INCLUDE G3/general.joy
+%IF = G 1 %INCLUDE G3/getkey.joy
+
 	has		==  swap in				 ;
 	hidefirst	==  dip					 ;
 	hidesecond	==  swapd dip swap			 ;
-								(*
-[Fs]	i		==  Fs					 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/line.joy
+
 	id		==  [] pop				 ;
 	ifchar		==  [char] rollup ifte			 ;
 	iffile		==  [file] rollup ifte			 ;
@@ -135,55 +150,60 @@ the two operands might be a list.				 *
 	iflist		==  [list] rollup ifte			 ;
 	iflogical	==  [logical] rollup ifte		 ;
 	ifstring	==  [string] rollup ifte		 ;
-								(*
-	in		==  swap contains			 *
-								 *)
 	infra		==  [infra1] binary			 ;
 	infra1		==  [unstack] dip i solostack		 ;
+
+%IF = G 1 %INCLUDE G3/init.joy
+%IF = G 1 %INCLUDE G3/input.joy
+
 	integer		==  0 sametype				 ;
 
-%INCLUDE 42minjoy.joy
+%IF = G 1 %INCLUDE G3/intro.joy
+%IF = G 1 %INCLUDE G3/leap.joy
+%IF = G 1 %INCLUDE G3/journal.joy
+
+%IF = E 1 %INCLUDE 42minjoy.joy
 
 	k		==  popd i				 ;
-								(*
-	last		==  dup rest null			 *
-			    [first] [rest last] branch		 *)
 	last		==  dup size pred at			 ;
 	leaf		==  list not				 ;
+
+%IF = G 1 %INCLUDE G3/ledger.joy
+
 	length		==  0 [pop succ] fold			 ;
 	lengthold	==  0 swap [pop succ] step		 ;
 	list		==  [] sametype				 ;
 	logical		==  false sametype			 ;
-								(*
-	map		==  maprev reverse			 *
-	maprev		==  [] rollup shuntmap			 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/mainmenu.joy
+
 	max		==  [<] [popd] [pop] ifte		 ;
 	member		==  in			 		 ;
+
+%IF = G 1 %INCLUDE G3/menu.joy
+
 	min		==  [<] [pop] [popd] ifte		 ;
-	mm		==  [pair] dip map unpair		 ;
+	mm		==  [pairlist] dip map unpair		 ;
 	mullists	==  [*] zip				 ;
 	neg		==  0 swap -				 ;
+	negative	==  0 <					 ;
 	newline		==  '\010 put				 ;
 	nil		==  []					 ;
-								(*
-B1      not		==  B2	  where B2 = not B1		 *
-								 *
-	null		==  car nothing sametype		 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/notes.joy
+
 	null		==  nil =				 ;
 	null2		==  nulld null or			 ;
 	nullary		==  stack swap dip rest cons unstack     ;
 	nulld		==  [null] dip				 ;
-								(*
-B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
-								 *)
 	odd		==  2 div popd 1 =			 ;
 	ord		==  6 casting				 ;
 	over		==  dupd swap				 ;
-	pair		==  [] cons cons			 ;
+
+%IF = G 1 %INCLUDE G3/pager.joy
+
 	pairlist	==  [] cons cons			 ;
-	pairlists	==  [pair] zip				 ;
+	pairlists	==  [pairlist] zip			 ;
 	partition	==  [[][]] dip
 			    dup
 			    [ first >
@@ -203,15 +223,29 @@ B1 B2   or		==  B3	  where B3 = (B1 or B2)		 *
 			    [first] first cnos
 			    [dup] first cnos
 			    step				 ;
-								(*
-X       pop		==					 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/percent.joy
+
 	pop2		==  pop pop				 ;
 	popd		==  [pop] dip				 ;
+	positive	==  0 >					 ;
+
+%IF = G 1 %INCLUDE G3/post.joy
+
 	pred		==  1 -					 ;
+
+%IF = G 1 %INCLUDE G3/print.joy
+
 	product		==  1 [*] fold				 ;
+
+%IF = G 1 %INCLUDE G3/profit.joy
+
+	ps		==  clrscr putchars stack putln getkey
+			    pop				 	 ;
 	putln		==  put newline				 ;
 	putsp		==  put space put			 ;
+	qsort		==  [small] [] [uncons [>] split]
+			    [swapd cons concat] binrec		 ;
 								(*
 	quicksort       :   IF the list has only 0 or 1 member
 				THEN leave it as it is
@@ -219,8 +253,6 @@ X       pop		==					 *
 				     quicksort both,
 				     concatenate them
 								*)
-	qsort		==  [small] [] [uncons [>] split]
-			    [swapd cons concat] binrec;
 	quicksort	==  dup small
 			    []
 			    [ partition
@@ -233,9 +265,22 @@ X       pop		==					 *
 			      quicksort1 [quicksort1] dip
 			      concat ]
 			    branch				 ;
+
+%IF = G 1 %INCLUDE G3/read.joy
+(*
+    read the definition of readkey appropriate for the operating system.
+*)
+%IF = A 2 %INCLUDE G3/atari.joy
+%IF = A 1 %INCLUDE G3/ibmpc.joy
+
+%IF = G 1 %INCLUDE G3/regmenu.joy
+
 	rem		==  over over / * -			 ;
+
+%IF = G 1 %INCLUDE G3/repmenu.joy
+
 	rest		==  1 drop				 ;
-	reverse		==  [] swap shunt			 ;
+	reverselist	==  [] swap shunt			 ;
 	rmap		==  [] swap [[swap cons] b] cons fold    ;
 	rolldown	==  swapd swap				 ;
 	rolldownd	==  [rolldown] dip			 ;
@@ -247,63 +292,72 @@ X       pop		==					 *
 	sequand		==  [pop false] ifte			 ;
 	sequor		==  [pop true] swap ifte		 ;
 
-%INCLUDE 42minjoy.ses
+%IF = E 1 %INCLUDE 42minjoy.ses
+
+%IF = G 1 %INCLUDE G3/setmenu.joy
 
 	shunt		==  [cnos] step			 	 ;
 	shuntmap	==  [[cnos] b] cons step		 ;
 	sign		==  [0 <] [pop -1] [[0 >] [pop 1] [] ifte]
 			    ifte				 ;
-								(*
-	size		==  0 [pop succ] fold			 *
-	small		==  uncons null swap pop		 *
-								 *)
 	small		==  dup null [[rest null] [pop true]]
 			    of i				 ;
 	solostack	==  stack [clearstack] dip		 ;
 	space		==  '\032	(* one space *)		 ;
+	spaces		==  "" swap ['\032 swons] times		 ;
 	square		==  dup *				 ;
+
+%IF = G 1 %INCLUDE G3/standard.joy
+%IF = G 1 %INCLUDE G3/strings.joy
+
 	strchr		==  swap [["" =] [first =] sequor not]
 			    [rest] while popd			 ;
 	string		==  "" sametype				 ;
 	succ		==  1 +					 ;
 	sum		==  0 [+] fold				 ;
-								(*
-	sumuntried	==  [] 0 [+] foldl			 *
-								 * 
-X Y	swap		==  Y X					 *
-								 *)
+
+%IF = G 1 %INCLUDE G3/summer.joy
+
 	swapd		==  [swap] dip				 ;
 	swoncat		==  swap concat				 ;
 	swons		==  swap cons				 ;
 	ternary		==  binary popd				 ;
+
+%IF = G 1 %INCLUDE G3/test.joy
+%IF = G 1 %INCLUDE G3/textin.joy
+
 	third		==  2 drop first			 ;
 	thrice		==  dup [twice] dip i			 ;
-								(*
-	times		==  swap times_				 *
-	times_		==  dup 0 =				 *
-			    [pop pop]				 *
-			    [[dup [i] dip] dip pred times_]	 *
-			    branch				 *
-								 *)
 	treemap		==  [] [map] treegenrec			 ;
 	treesample	==  [[1 2 [3 4] 5 [[[6]]] 7] 8]		 ;
+
+%IF = G 1 %INCLUDE G3/trim.joy
+
 	twice		==  dup b				 ;
 	unary		==  nullary popd			 ;
-								(*
-[X Xs]	uncons		==  X [Xs]				 *
-[]	uncons		==  nothing []				 *
-								 *)
 	uncons2		==  unconsd uncons swapd		 ;
 	unconsd		==  [uncons] dip			 ;
-	unit		==  [] cons				 ;
+	unitlist	==  [] cons				 ;
 	unpair		==  uncons uncons pop			 ;
 	unswons		==  uncons swap				 ;
 	unwrap		==  [] step				 ;
 	user		==  [zzz] first sametype		 ;
+
+%IF = G 1 %INCLUDE G3/view.joy
+
 	w		==  dupd i				 ;
+
+%IF = G 1 %INCLUDE G3/wordin.joy
+
 	wrap		==  [] swap [cons] times		 ;
+
+%IF = G 1 %INCLUDE G3/write.joy
+
 	x		==  dup i				 ;
 	y		==  fix i				 ;
 	zip		==  [null2] [pop2 []] [uncons2]
 			    [[swons] dip cons] linrec		 ;
 	zzz		==  zzz		(* sentinel *)		 .
+(*
+vi: filetype=joy
+*)

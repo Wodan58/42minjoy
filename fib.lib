@@ -1,7 +1,0 @@
-(*  vi: filetype=joy
-    Fibonnacci
-*)
-(*
-fib == dup 2 < [[1 - dup fib swap 1 - fib +] []] of i;
-*)
-fib == [2 <] [] [pred dup pred] [+] binrec;

@@ -1,5 +1,3 @@
-(* vi: filetype=joy
-*)
 (* RECURSIVE FUNCTIONS, non-recursive computation *)
 
 (* "last" is a tail-recursive function *)
@@ -60,3 +58,6 @@
   [MORRIS Janna 1992 year 1 major undecided]            cnos
 (* now sort on surname and print *)
   quicksort1 dup [putln] step pop .
+(*
+vi: filetype=joy
+*)

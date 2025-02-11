@@ -11,8 +11,8 @@ false
 10 24
 [111 222 333]
 [33 44 55] 22 11
-[a b d e f]
-[a b c d e f]
+['a 'b 'd 'e 'f]
+['a 'b 'c 'd 'e 'f]
 6
 6
 579
@@ -38,11 +38,11 @@ false
 64
 64
 255
-A
-a
-g
+'A
+'a
+'g
 Robinson
-[dup rest null [first] [rest last] branch]
+[dup size pred at]
 Robinson
 Robinson
 Robinson

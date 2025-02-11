@@ -1,14 +1,13 @@
 #
 #   module  : CMakeLists.txt
-#   version : 1.13
-#   date    : 01/14/25
+#   version : 1.14
+#   date    : 02/10/25
 #
 cmake_minimum_required(VERSION 3.29)
 project(42minjoy VERSION 1.0)
-option(RUN_TESTS "Run standard tests" OFF)
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 else()
-add_definitions("-g -Wall -Wextra -Wpedantic -Werror -Wno-old-style-definition -Wno-knr-promoted-parameter")
+add_definitions("-DNCHECK -O3 -Wall -Wextra -Werror -Wno-old-style-definition -Wno-knr-promoted-parameter")
 endif()
 add_executable(joy joy.c gc.c malloc.c free.c setraw.c)
 target_link_libraries(joy)
@@ -20,6 +19,3 @@ add_custom_target(demo02.txt ALL
 		  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		  DEPENDS joy
 		  COMMAND joy fib.joy >demo02.txt)
-if(RUN_TESTS)
-add_subdirectory(test)
-endif()

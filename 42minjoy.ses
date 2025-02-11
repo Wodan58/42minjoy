@@ -1,5 +1,9 @@
-(* vi:filetype=joy
+(*
+    module  : 42minjoy.ses
+    version : 1.3
+    date    : 02/10/25
 *)
+
 		sesame_f	==  [[duco] duco]		 ;
 		sesame_g_h      ==  [[unit dup car]]
 				    [ unit dup car ]		 ;
@@ -10,4 +14,6 @@
 					    [not] infra dureco ] ;
 		sesame_n	==  [[[duco duco] duco duco]
 				      [duco duco] duco duco ]	 ;
- 
+(*
+vi: filetype=joy
+*)

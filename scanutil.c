@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.20
-    date    : 01/14/25
+    version : 1.21
+    date    : 02/10/25
 */
 /* scanutil.c: Included file for scan utilities */
 
@@ -62,8 +62,8 @@ static int lastresword;
 static _REC_stdidents stdidents[maxstdidenttab + 1];
 #endif
 static int laststdident;
-#if defined(NETVER)
-static int trace;
+#if defined(NETVER) || defined(MINJOY)
+static int g_trace;
 #endif
 #ifdef MINJOY
 static char stringbuf[maxlinelength + 1];
@@ -84,7 +84,7 @@ char *mes;
     int j, k;
 
     if (repeatline) {
-	fprintf(f, "%*d%s", linenumwidth, linenumber, linenumsep);
+	fprintf(f, "\n%*d%s", linenumwidth, linenumber, linenumsep);
 	for (j = 0; j < ll; j++)
 	    putc(line[j], f);
 	putc('\n', f);
@@ -108,16 +108,16 @@ char *mes;
 {
     if (diag != 'I')
 	errorcount++;
-    if (includelevel > 0)
+    if (includelevel)
 	printf("INCLUDE file : \"%-*.*s\"\n", identlength, identlength,
 	    inputs[includelevel - 1].nam);
     point_to_symbol(true, stdout, diag, mes);
-    if (writelisting > 0) {
+    if (writelisting) {
 	point_to_symbol(must_repeat_line, listing, diag, mes);
 	must_repeat_line = true;
     }
     if (diag == 'F')
-	my_exit(0);
+	my_exit(2);	/* fatal error */
 } /* point */
 
 /* - - - - -   MODULE SCANNER  - - - - - */
@@ -127,7 +127,7 @@ char *mes;
 */
 static void iniscanner()
 {
-    beg_time = time(0);
+    time(&beg_time);
     /*
      * Initial input file is stdin, unless a filename parameter is present.
      * In that case input comes from that file. Neither stdin nor the input
@@ -136,7 +136,7 @@ static void iniscanner()
     srcfile = stdin;
     if ((listing = fopen(list_filename, "w")) == 0) {
 	fprintf(stderr, "%s (not open for writing)\n", list_filename);
-	my_exit(0);
+	my_exit(2);	/* fatal error */
     }
     chr = ' ';
     cc = 1;
@@ -151,7 +151,6 @@ symbol symb;
     if (++lastresword > maxrestab)
 	point('F', "too many reserved words");
     strncpy(reswords[lastresword].alf, str, reslength);
-    reswords[lastresword].alf[reslength] = 0;
     reswords[lastresword].symb = symb;
 } /* erw */
 
@@ -163,7 +162,6 @@ standardident symb;
     if (++laststdident > maxstdidenttab)
 	point('F', "too many identifiers");
     strncpy(stdidents[laststdident].alf, str, identlength);
-    stdidents[laststdident].alf[identlength] = 0;
     stdidents[laststdident].symb = symb;
 } /* est */
 #endif
@@ -178,15 +176,15 @@ int flag;
     if (!flag) {
 	if ((srcfile = fopen(str, "r")) == 0) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
-	    my_exit(0);
+	    my_exit(2);		/* fatal error */
 	}
 	adjustment = 0;
 	return;
     }
     /*
-     * str may contain a pathname. The pathname must be stripped, because
-     * identlength is not large enough to hold a pathname. The name is only
-     * used in error messages and does not need a pathname.
+     * Str may contain a pathname. The pathname must be stripped, because
+     * identlength may not be large enough to hold a pathname. The name is
+     * only used in error messages and does not need a pathname.
      */
     if ((ptr = strrchr(str, '/')) != 0)
 	ptr++;
@@ -194,22 +192,25 @@ int flag;
 	ptr = str;
     strncpy(inputs[includelevel].nam, ptr, identlength);
     inputs[includelevel].lastlinenumber = linenumber;
+    /*
+     * Try to open the file. If that fails, it is tried again, with pathname
+     * prepended.
+     */
     if ((fp = fopen(str, "r")) == 0) {
 	/*
-	 * If the include file does not contain a pathname yet, the pathname
-	 * is prepended and the open is tried again. If that also fails, the
-	 * program fails. Pathname itself is a global variable.
+	 * The pathname is prepended and the open is tried again. If that also
+	 * fails, the program fails. Pathname itself is a global variable.
 	 */
-	if (pathname && ptr == str) {
+	if (pathname) {
 	    flag = strlen(pathname) + strlen(str) + 1;
-	    ptr = GC_malloc_atomic(flag);
+	    ptr = (char *)GC_malloc_atomic(flag);
 	    sprintf(ptr, "%s%s", pathname, str);
 	    fp = fopen(ptr, "r");
 	    GC_free(ptr);
 	}
 	if (!fp) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
-	    my_exit(0);
+	    my_exit(2);		/* fatal error */
 	}
     }
     inputs[includelevel].fil = fp;
@@ -220,7 +221,7 @@ static void perhapslisting()
 {
     int j;
 
-    if (writelisting > 0) {
+    if (writelisting) {
 	fprintf(listing, "%*d%s", linenumwidth, linenumber, linenumsep);
 	for (j = 0; j < ll; j++)
 	    putc(line[j], listing);
@@ -254,7 +255,7 @@ static void getch()
 		ll = strlen(line);
 		perhapslisting();
 	    } else
-		my_exit(0);
+		my_exit(2);	/* fatal error */
 	} else {
 	    f = inputs[includelevel - 1].fil;
 	    if (fgets(line, maxlinelength, f)) {
@@ -397,10 +398,8 @@ static void directive()
 	if (chr != '=')
 	    point('E', "\"=\" expected");
 	scantimevariables[c - 'A'] = value();
-#if 0
     } else if (!strcmp(dir, "TRACE")) {
-	trace = value();
-#endif
+	g_trace = value();
     } else if (!strcmp(dir, "LISTING")) {
 	j = writelisting;
 	writelisting = (int)value();
@@ -622,7 +621,7 @@ static void putch(c)
 int c;
 {
     putchar(c);
-    if (writelisting > 0) {
+    if (writelisting) {
 	if (!outlinelength)
 	    fprintf(listing, "%s%s", linenumspace, linenumsep);
 	putc(c, listing);
@@ -636,7 +635,7 @@ int c;
 static void writeline()
 {
     putchar('\n');
-    if (writelisting > 0)
+    if (writelisting)
 	putc('\n', listing);
     outlinelength = 0;
 }
@@ -678,7 +677,7 @@ value_t j;
 static void writeinteger(j)
 value_t j;
 {
-    if (outlinelength + 12 > maxoutlinelength)
+    if (outlinelength + 19 > maxoutlinelength)
 	writeline();
     if (j >= 0)
 	writenatural(j);
@@ -694,9 +693,9 @@ FILE *f;
 {
     time_t c;
 
-    if (errorcount > 0)
+    if (errorcount)
 	fprintf(f, "%d error(s)\n", errorcount);
-    end_time = time(0);
+    time(&end_time);
     if ((c = end_time - beg_time) > 0)
 	fprintf(f, "%lu seconds CPU\n", (unsigned long)c);
 }
@@ -706,7 +705,7 @@ static void finalise()
     /* finalise */
     fflush(stdout);
     fin(stderr);
-    if (listing && writelisting > 0)
+    if (listing && writelisting)
 	fin(listing);
     /* finalise */
 }

@@ -1,15 +1,15 @@
 (*
     module  : tutorial.joy
-    version : 1.3
-    date    : 09/24/24
+    version : 1.4
+    date    : 02/10/25
 *)
 %LISTING 1
 (*
-                J O Y   T U T O R I A L
+		J O Y   T U T O R I A L
 
 JOY is a functional language which uses postfix-like notation
 and operates on a stack. Its base types are Booleans,
-characters, integers and  symbols. A list of values
+characters, integers and symbols. A list of values
 of any type is a value of type list.
 *)
 
@@ -27,15 +27,15 @@ of any type is a value of type list.
 (* LISTS *)
 
 (* push a list of numbers, reverse it, write result *)
-   [1 2 3 4 5]  reverse .
+   [1 2 3 4 5]  reverselist .
 (* push two lists of symbols, concatenate, write result *)
    [peter paul]  [mary jane]  concat .
 (* push a list of mixed values, write its last element *)
    [11 false 'X 44]  last .
 (* push a number and a list, determine membership *)
-   3  [1 5 3 4 2] member .
+   3  [1 5 3 4 2]  member .
 (* similar *)
-   3  [1 5 6 4 2] member .
+   3  [1 5 6 4 2]  member .
 (* push a list of numbers, duplicate to  find sum and product *)
    [1 2 3 4]  dup    sum put    space put    product .
 (* push a number and a list of numbers, cons together *)
@@ -53,9 +53,9 @@ of any type is a value of type list.
 (* what is its length ? *)
    dup  length .
 (* reverse it, write its length *)
-   reverse  length .
+   reverselist  length .
 (* So, the length of a list is also the length of its reverse:
-                length  ==  reverse length
+		length  ==  reverselist length
 *)
 (* INPUT from terminal or input file *)
   get get + .
@@ -69,7 +69,7 @@ of the stack and then execute it as a program.
 (* push two numbers and a program, i-combinator to execute *)
    111  222  [+ put]  i .
 (* i-combinator to execute [+ put] on top of stack *)
-   111  [put +]  reverse  222  swap  i .
+   111  [put +]  reverselist  222  swap  i .
 (* dip-combinator to multiply 3 and 7, then add 100 *)
    3  7  100  [*]  dip  + .
 (* step-combinator to apply program to each member of list *)
@@ -93,19 +93,21 @@ of the stack and then execute it as a program.
 (* fold-combinator to add squares of members of list *)
    [1 2 3]  0  [dup * +]  fold .
 (* construct-combinator to make list from programs *)
-  11 12                         (* push two numbers             *)
-  [                             (* make a list of ..            *)
-    [+]                         (*  their sum                   *)
-    [*]                         (*  their product               *)
-    [pop unit]                  (*  the unit list of first      *)
-    [dup pair] ]                (*  the pair of the second      *)
-  construct2 .
-(* the two numbers are still there *)
-  [                             (* make a list of ..            *)
-    [pair [square] map unpair +](*  the sum of their squares    *)
-    [pop]                       (*  the first number            *)
-    [] ]                        (*  the second number           *)
-  construct2 .
+   [11 12]		(* push two numbers		*)
+   [			(* make a list of ..		*)
+      [+]		(*  their sum			*)
+      [*]		(*  their product		*)
+      [pop unitlist]	(*  the unit list of first	*)
+      [dup pairlist] ]	(*  the pair of the second	*)
+   construct [] cons cons cons cons .
+(* the two numbers are not there *)
+   [11 12]		(* push two numbers		*)
+   [			(* make a list of ..		*)
+      [pairlist [square] map unpair +]
+			(*  the sum of their squares	*)
+      [pop]		(*  the first number		*)
+      [] ]		(*  the second number		*)
+   construct [] cons cons cons .
 (* now clear the stack *)
    [] unstack .
 

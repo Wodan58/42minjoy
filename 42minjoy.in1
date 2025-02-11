@@ -1,5 +1,4 @@
-(* vi: filetype=joy
-begin of include file *)
+(* begin of include file *)
 
 (* SET-  and  IF-DIRECTIVES  *)
 
@@ -26,3 +25,6 @@ begin of include file *)
    '\ + L - 'a 'A .
 
 (* end of include file *)
+(*
+vi: filetype=joy
+*)

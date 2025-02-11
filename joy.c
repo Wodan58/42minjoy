@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.52
-    date    : 01/14/25
+    version : 1.53
+    date    : 02/10/25
 */
 #include <stdio.h>
 #include <string.h>
@@ -9,17 +9,34 @@
 #include <stdlib.h>
 #include <time.h>
 #include <setjmp.h>
+/*
+ * ATARI 1040 STF running under Minix 1.5
+ */
+#ifdef ATARI
+typedef long intptr_t;
+#else
+#include <stdint.h>
+#endif
 #include <sys/stat.h>	/* filetime */
 #include "gc.h"		/* GC_malloc_atomic */
 
-/* #define DEBUGM */	/* symbol table */
-#define UNDEFE		/* undeferror */
+#if 0
+#define DEBUG_G		/* garbage collect  */
+#define DEBUG_M		/* memory / symbols */
+#define DEBUG_U		/* (un)used symbols */
+#define DEBUG_S		/* stack dump @ end */
+#define UNDEF_E		/* undeferror       */
+#endif
 
 #ifdef NPROTO
 #define VOIDP
 #else
 #define VOIDP		void
 #endif
+
+#define fatal_err	2
+#define runtime_err	1
+#define no_error	0
 
 #define persistent	2
 #define true		1
@@ -30,19 +47,34 @@
 #define lib_filename	"42minjoy.lib"
 #define list_filename	"42minjoy.lst"
 
-#define reslength	2	/* reserved words */
-#define maxrestab	5	/* precise number */
+#define reslength	2	/* reserved words  */
+#define maxrestab	5	/* precise number  */
 
 #define stdlength	11	/* standard idents */
-#define identlength	21	/* used to be 16 */
-#define maxstdidenttab	101	/* precise number */
+#define identlength	21	/* used to be 16   */
+#define maxstdidenttab	104	/* precise number  */
 
 /*
- * maxint reports the maximum value an integer can hold. Integers are kept in
+ * Maxint reports the maximum value an integer can hold. Integers are kept in
  * value_t and only two different sizes are expected.
  */
-#define MAX_LONG_8	9223372036854775807LL
-#define MAX_LONG_4	2147483647L
+#ifdef ATARI
+#define MAX_LONG	2147483647L
+#define format_int	"%ld"
+#define format_file	"%lx"
+#else
+#define MAX_LONG	9223372036854775807LL
+#define format_int	"%lld"
+#define format_file	"%llx"
+#endif
+
+/*
+ * These macros can be used to convert pointers to integers of a different size
+ * and to convert integers to pointers of a different size, just to placate the
+ * C compiler.
+ */
+#define TO_POINTER(x)	((void *)(intptr_t)(x))
+#define TO_INTEGER(x)	((value_t)(intptr_t)(x))
 
 typedef unsigned char boolean;
 
@@ -62,41 +94,42 @@ typedef enum {
  * lists.
  */
 typedef enum {
-    lib_, mul_, add_, sub_, div_, lss_, eql_, all_, and_, argv_, binrec_,
-    body_, case_, casting_, cleave_, compare_, concat_, cond_, condlinrec_,
-    condnestrec_, cons_, construct_, dip_, divmod_, drop_, dup_, equal_,
-    false_, fclose_, feof_, ferror_, fflush_, fgetch_, fgets_, filetime_,
-    filter_, fopen_, format_, fput_, fputch_, fputchars_, fread_, fremove_,
-    frename_, fseek_, ftell_, fwrite_, genrec_, get_, getch_, getenv_, gmtime_,
-    help_, i_, ifte_, in_, intern_, linrec_, localtime_, map_, maxint_,
-    mktime_, name_, not_, of_, opcase_, or_, pick_, pop_, primrec_, put_,
-    putch_, putchars_, quit_, sametype_, size_, some_, split_, stack_, stderr_,
-    stdin_, stdout_, step_, strftime_, strtol_, swap_, tailrec_, take_, time_,
-    times_, treegenrec_, treerec_, treestep_, true_, typeof_, unary2_, unary3_,
-    unary4_, uncons_, unstack_, while_, xor_,
+    lib_, mul_, add_, sub_, div_, lss_, eql_, all_, and_, argv_, assign_,
+    binrec_, body_, case_, casting_, cleave_, compare_, concat_, cond_,
+    condlinrec_, condnestrec_, cons_, construct_, dip_, divmod_, drop_, dup_,
+    equal_, false_, fclose_, feof_, ferror_, fflush_, fgetch_, fgets_,
+    filetime_, filter_, fopen_, format_, fput_, fputch_, fputchars_, fread_,
+    fremove_, frename_, fseek_, ftell_, fwrite_, genrec_, get_, getch_,
+    getenv_, gmtime_, help_, i_, ifte_, in_, intern_, linrec_, localtime_,
+    map_, maxint_, mktime_, name_, not_, of_, opcase_, or_, pick_, pop_,
+    primrec_, put_, putch_, putchars_, quit_, sametype_, size_, some_, split_,
+    stack_, stderr_, stdin_, stdout_, step_, strftime_, strtol_, swap_,
+    tailrec_, take_, time_, times_, treegenrec_, treerec_, treestep_, true_,
+    typeof_, unary2_, unary3_, unary4_, unassign_, uncons_, undefs_, unstack_,
+    while_, xor_,
     boolean_, char_, integer_, list_, string_, file_, funct_, unknownident
 } standardident;
 
-typedef short memrange;
+typedef unsigned short memrange;
 
 /*
- * The value_t size should be as large as a pointer, because sometimes it is
+ * Value_t should be at least as large as a pointer, because sometimes it is
  * used to store a pointer.
  */
-#if _MSC_VER >= 1900
-typedef long long value_t;
-#else
+#ifdef ATARI
 typedef long value_t;
+#else
+typedef long long value_t;
 #endif
 
 typedef void (*proc_t)(VOIDP);
 
 /*
- * pathname of the joy binary, to be used as prefix to library files. That way
+ * Pathname of the joy binary, to be used as prefix to library files. That way
  * it is not necessary to copy all library files to all working directories.
  */
 static char *pathname;
-static char **g_argv;  /* command line */
+static char **g_argv;	/* command line */
 static int g_argc;
 
 #include "proto.h"
@@ -123,6 +156,7 @@ static void initialise()
     est("all",         all_);
     est("and",         and_);
     est("argv",        argv_);
+    est("assign",      assign_);
     est("binrec",      binrec_);
     est("body",        body_);
     est("case",        case_);
@@ -211,7 +245,9 @@ static void initialise()
     est("unary2",      unary2_);
     est("unary3",      unary3_);
     est("unary4",      unary4_);
+    est("unassign",    unassign_);
     est("uncons",      uncons_);
+    est("undefs",      undefs_);
     est("unstack",     unstack_);
     est("while",       while_);
     est("xor",         xor_);
@@ -227,17 +263,20 @@ static void initialise()
  * collected. They remain in use until the end of the program.
  */
 #ifndef MAXTABLE
-#define MAXTABLE	400
+#define MAXTABLE	500
 #endif
 #ifndef MAXMEM
-#define MAXMEM		5000
+#define MAXMEM		2140
 #endif
 
 typedef struct _REC_table {
     identalfa alf;
     memrange adr;
+#ifdef DEBUG_U
+    unsigned char used;
+#endif
 } _REC_table;
-
+    
 typedef struct _REC_m {
     value_t val;
     unsigned char marked;
@@ -245,22 +284,22 @@ typedef struct _REC_m {
     memrange nxt;
 } _REC_m;
 
-static _REC_table table[MAXTABLE + 1];
+static _REC_table table[MAXTABLE];
 static int lastlibloc, sentinel, lasttable, locatn;
-static _REC_m m[MAXMEM + 1];
+static _REC_m m[MAXMEM];
 static memrange firstusernode, freelist, programme;
 static memrange s,  /* stack */
 		dump;
 
-#ifdef DEBUG
+#if defined(DEBUG_G) || defined(DEBUG_S)
 static standardident last_op_executed;
 #endif
 static long stat_kons, stat_gc, stat_ops, stat_calls;
 static time_t stat_lib;
 
 static char *standardident_NAMES[] = {
-    "LIB", "*", "+", "-", "/", "<", "=", "all", "and", "argv", "binrec",
-    "body", "case", "casting", "cleave", "compare", "concat", "cond",
+    "LIB", "*", "+", "-", "/", "<", "=", "all", "and", "argv", "assign",
+    "binrec", "body", "case", "casting", "cleave", "compare", "concat", "cond",
     "condlinrec", "condnestrec", "cons", "construct", "dip", "divmod", "drop",
     "dup", "equal", "false", "fclose", "feof", "ferror", "fflush", "fgetch",
     "fgets", "filetime", "filter", "fopen", "format", "fput", "fputch",
@@ -271,26 +310,29 @@ static char *standardident_NAMES[] = {
     "quit", "sametype", "size", "some", "split", "stack", "stderr", "stdin",
     "stdout", "step", "strftime", "strtol", "swap", "tailrec", "take", "time",
     "times", "treegenrec", "treerec", "treestep", "true", "typeof", "unary2",
-    "unary3", "unary4", "uncons", "unstack", "while", "xor",
+    "unary3", "unary4", "unassign", "uncons", "undefs", "unstack", "while",
+    "xor",
     "BOOLEAN", "CHAR", "INTEGER", "LIST", "STRING", "FILE", "FUNCTION",
     "UNKNOWN"
 };
 
-#ifdef DEBUGM
+#ifdef DEBUG_M
 void DumpM()
 {
     int j;
-    FILE *fp = fopen("joy.dmp", "w");
+    FILE *fp = fopen("42minjoy.dmp", "w");
 
     fprintf(fp, "Table\n");
     fprintf(fp, "  nr %-*.*s  adr\n", identlength, identlength, "name");
-    for (j = 1; j <= MAXTABLE && table[j].adr; j++)
+    for (j = 1; j < lasttable; j++)
 	fprintf(fp, "%4d %-*.*s %4d\n", j, identlength, identlength,
 		table[j].alf, table[j].adr);
     fprintf(fp, "\nMemory\n");
     fprintf(fp, "  nr %-*.*s           value next M\n", stdlength, stdlength,
 	    "name");
-    for (j = 1; j <= MAXMEM && m[j].marked; j++) {
+    for (j = 1; j < MAXMEM; j++) {
+	if (!m[j].marked)
+	    continue;
 	fprintf(fp, "%4d %-*.*s ", j, stdlength, stdlength,
 		standardident_NAMES[m[j].op]);
 	if (m[j].op == string_)
@@ -299,6 +341,24 @@ void DumpM()
 	    fprintf(fp, "%15ld", (long)m[j].val);
 	fprintf(fp, " %4d %c\n", m[j].nxt, m[j].marked == persistent ? 'P' :
 		'T');
+    }
+    fclose(fp);
+}
+#endif
+
+#ifdef DEBUG_U
+void DumpU()
+{
+    int j;
+    FILE *fp = fopen("42minjoy.use", "w");
+
+    fprintf(fp, "Table\n");
+    fprintf(fp, "  nr %-*.*s  adr\n", identlength, identlength, "name");
+    for (j = 1; j < lasttable; j++) {
+	if (table[j].used)
+	    continue;
+	fprintf(fp, "%4d %-*.*s %4d\n", j, identlength, identlength,
+		table[j].alf, table[j].adr);
     }
     fclose(fp);
 }
@@ -313,7 +373,7 @@ static void lookup()
 	return;
     }
     locatn = 0;
-    if (sentinel > 0) {  /* library has been read */
+    if (sentinel) {	/* library has been read */
 	strcpy(table[sentinel].alf, ident);
 	locatn = lasttable;
 	while (strcmp(table[locatn].alf, ident))
@@ -335,7 +395,7 @@ static void lookup()
 	}
 	if (!result)
 	    id = lib_;
-	else {  /* binarysearch through standardidentifiers */
+	else {	/* binarysearch through standardidentifiers */
 	    j = result = 1;
 	    k = laststdident;
 	    while (k >= j) {
@@ -369,12 +429,17 @@ memrange node;
 {
     if (m[node].op == unknownident)
 	fprintf(f, "%5d %-*.*s %10d %10d %c", node, identlength,
-	    identlength, (char *)m[node].val, 0, m[node].nxt,
+	    identlength, (char *)TO_POINTER(m[node].val), 0, m[node].nxt,
 	    m[node].marked == persistent ? 'P' : m[node].marked ? 'T' : 'F');
+    else if (m[node].op == list_)
+	fprintf(f, "%5d %-*.*s %10d %10d %c", node, identlength,
+	    identlength, standardident_NAMES[m[node].op], (memrange)m[node].val,
+	    m[node].nxt, m[node].marked == persistent ? 'P' : m[node].marked ?
+	    'T' : 'F');
     else
 	fprintf(f, "%5d %-*.*s %10ld %10d %c", node, identlength,
 	    identlength, standardident_NAMES[m[node].op], (long)m[node].val,
-	    m[node].nxt, m[node].marked == persistent ?  'P' : m[node].marked ?
+	    m[node].nxt, m[node].marked == persistent ? 'P' : m[node].marked ?
 	    'T' : 'F');
     if (m[node].op == lib_)
 	fprintf(f, "   %-*.*s %4d", identlength, identlength,
@@ -386,7 +451,7 @@ static void writenode(node)
 memrange node;
 {
     wn(stdout, node);
-    if (writelisting > 0) {
+    if (writelisting) {
 	putc('\t', listing);
 	wn(listing, node);
     }
@@ -395,12 +460,12 @@ memrange node;
 static void mark(node)
 memrange node;
 {
-    while (node > 0) {
+    while (node) {
 	if (writelisting > 3)
 	    writenode(node);
 	if (m[node].op == list_ && !m[node].marked)
 	    mark((memrange)m[node].val);
-	if (m[node].marked == 0)
+	if (!m[node].marked)
 	    m[node].marked = 1;	/* set marked */
 	node = m[node].nxt;
     }
@@ -415,18 +480,12 @@ memrange node;
     value_t collected;
 
     if (!freelist && sentinel) {
-#ifdef DEBUG
-	printf("gc, last_op_executed = %-*.*s\n", identlength,
+#ifdef DEBUG_G
+	printf("gc, last_op_executed: %-*.*s\n", identlength,
 		identlength, standardident_NAMES[last_op_executed]);
 #endif
-	if (writelisting > 1) {
-	    writeident("GC start");
-	    writeline();
-	}
-
-	/*
-	 * Make a backup of the old values
-	 */
+	if (writelisting > 1)
+	    writeident("GC start\n");
 	mark(programme);
 	mark(s);
 	mark(dump);
@@ -434,16 +493,18 @@ memrange node;
 	mark(node);
 	if (op == list_)
 	    mark((memrange)val);
-	if (writelisting > 2) {
-	    writeident("finished marking");
-	    writeline();
-	}
+	/* mark variables */
+	for (j = 1; j < lasttable; j++)
+	    if (table[j].alf[0] == '_')
+		mark(table[j].adr);
+	if (writelisting > 2)
+	    writeident("finished marking\n");
 	/*
 	 * Scan memory and move all unused nodes to the freelist.
 	 */
 	collected = 0;
-	for (j = firstusernode; j <= MAXMEM; j++) {
-	    if (m[j].marked == 0) {
+	for (j = firstusernode; j < MAXMEM; j++) {
+	    if (!m[j].marked) {
 		m[j].nxt = freelist;
 		freelist = j;
 		collected++;
@@ -454,8 +515,7 @@ memrange node;
 	}
 	if (writelisting > 1) {
 	    writeinteger(collected);
-	    writeident(" nodes collected");
-	    writeline();
+	    writeident(" nodes collected\n");
 	}
 	stat_gc++;
     }
@@ -486,7 +546,7 @@ memrange *where;
 	getsym();
 	*where = kons(list_, (value_t)0, 0);
 	m[*where].marked = sentinel ? 1 : persistent;
-	if (sym == lbrack || sym == identifier || sym == charconst ||
+	if (sym == lbrack || sym == identifier  || sym == charconst ||
 			     sym == numberconst || sym == stringconst) {
 		/* sym == hyphen */
 	    readterm(&here);
@@ -497,7 +557,7 @@ memrange *where;
     case identifier:
 	lookup();
 	if (id == unknownident)
-	    *where = kons(id, (value_t)GC_strdup(ident), 0);
+	    *where = kons(id, TO_INTEGER(GC_strdup(ident)), 0);
 	else
 	    *where = kons(id, (value_t)locatn, 0);
 	break;
@@ -519,10 +579,13 @@ memrange *where;
      */
     case stringconst:
 	str = GC_strdup(stringbuf);
+#ifndef BDWGC
 	str[-1] = sentinel ? 1 : persistent;
-	*where = kons(string_, (value_t)str, 0);
+#endif
+	*where = kons(string_, TO_INTEGER(str), 0);
 	break;
 
+    case semic:
     case period:
 	*where = 0;
 	return;
@@ -544,7 +607,7 @@ memrange *first;
     if ((j = *first) == 0)
 	return;
     getsym();
-    while (sym == lbrack || sym == identifier || sym == charconst ||
+    while (sym == lbrack || sym == identifier  || sym == charconst ||
 			    sym == numberconst || sym == stringconst) {
 	    /* sym == hyphen */
 	readfactor(&m[j].nxt);
@@ -557,9 +620,9 @@ static void writeterm(node, nl)
 memrange node;
 boolean nl;
 {
-    while (node > 0) {
+    while (node) {
 	writefactor(node, false);
-	if (m[node].nxt > 0)
+	if (m[node].nxt)
 	    putch(' ');
 	node = m[node].nxt;
     }
@@ -573,7 +636,7 @@ boolean nl;
 {   /* was forward */
     char *str, *ptr;
 
-    if (node > 0) {
+    if (node) {
 	switch (m[node].op) {
 	case list_:
 	    putch('[');
@@ -582,20 +645,13 @@ boolean nl;
 	    break;
 
 	case boolean_:
-	    if (m[node].val == 1)
-		writeident("true");
-	    else
-		writeident("false");
+	    writeident(m[node].val == 1 ? "true" : "false");
 	    break;
 
 	case char_:
-	    if (m[node].val == '\n')
-		writeline();
-	    else {
-		if (!isspace((int)m[node].val))
-		    putch('\'');
-		putch((int)m[node].val);
-	    }
+	    if (!isspace((int)m[node].val))
+		putch('\'');
+	    putch((int)m[node].val);
 	    break;
 
 	case integer_:
@@ -603,7 +659,7 @@ boolean nl;
 	    break;
 
 	case string_:
-	    str = (char *)m[node].val;
+	    str = TO_POINTER(m[node].val);
 	    ptr = GC_malloc_atomic(strlen(str) + 3);
 	    sprintf(ptr, "\"%s\"", str);
 	    writeident(ptr);
@@ -624,7 +680,7 @@ boolean nl;
 	    break;
 
 	case unknownident:
-	    writeident((char *)m[node].val);
+	    writeident(TO_POINTER(m[node].val));
 	    break;
 
 	default:
@@ -639,7 +695,7 @@ boolean nl;
 static void patchterm(node)
 memrange node;
 {
-    while (node > 0) {
+    while (node) {
 	patchfactor(node);
 	node = m[node].nxt;
     }
@@ -648,16 +704,16 @@ memrange node;
 static void patchfactor(node)
 memrange node;
 {   /* was forward */
-    if (node > 0) {
+    if (node) {
 	switch (m[node].op) {
 	case list_:
 	    patchterm((memrange)m[node].val);
 	    break;
 
 	case unknownident:
-	    strncpy(ident, (char *)m[node].val, identlength);
+	    strncpy(ident, TO_POINTER(m[node].val), identlength);
 	    ident[identlength] = 0;
-	    GC_free((char *)m[node].val);
+	    GC_free(TO_POINTER(m[node].val));
 	    lookup();
 	    m[node].op = (unsigned char)id;
 	    m[node].val = locatn;
@@ -676,6 +732,7 @@ char *str;
     /*
      * Check that the library file is present. If not, this should not be a
      * fatal error. Some global variables need to be set in case that happens.
+     *
      * If the library is not present in the current directory, but is present
      * in the same directory as the joy binary, it is read from there. This
      * also applies to files that are included in the library.
@@ -718,7 +775,7 @@ done:
 	if (writelisting > 5)
 	    fprintf(listing, "seen : %-*.*s\n", identlength, identlength,
 		    ident);
-	if (lastlibloc > 0)
+	if (lastlibloc)
 	    if (strcmp(ident, table[lastlibloc].alf) <= 0)
 		point('F', "bad order in library");
 	if (lastlibloc == MAXTABLE)
@@ -737,8 +794,8 @@ done:
     }
     firstusernode = freelist;
     if (writelisting > 4)
-	fprintf(listing, "firstusernode = %d,  total memory = %d\n",
-		firstusernode, MAXMEM);
+	fprintf(listing, "firstusernode = %d, total memory = %d\n",
+		firstusernode, MAXMEM - 1);
     cc = ll;
     sentinel = lastlibloc + 1;
     lasttable = sentinel;
@@ -751,11 +808,11 @@ static jmp_buf JL10;
 
 #ifdef NCHECK
 #define o(x)	m[x].op
+#define b(x)	(m[x].val > 0)
 #define i(x)	m[x].val
 #define l(x)	((memrange)m[x].val)
 #define n(x)	m[x].nxt
 #define v(x)	m[x].val
-#define b(x)	(m[x].val > 0)
 #else
 static memrange ok(x)
 memrange x;
@@ -770,6 +827,12 @@ memrange x;
 {
     return m[ok(x)].op;
 }  /* o */
+
+static boolean b(x)
+memrange x;
+{
+    return (boolean)(v(x) > 0);
+}  /* b */
 
 static value_t i(x)
 memrange x;
@@ -803,13 +866,17 @@ memrange x;
 {
     return m[ok(x)].val;
 }  /* v */
-
-static boolean b(x)
-memrange x;
-{
-    return (boolean)(v(x) > 0);
-}  /* b */
 #endif
+
+/*
+ * Function called from SetRaw.
+ * Remembers the screen dimensions.
+ */
+void do_push_int(val)
+int val;
+{
+    s = kons(integer_, (value_t)val, s);
+}
 
 static void binary(op, val)
 standardident op;
@@ -818,10 +885,19 @@ value_t val;
     s = kons(op, val, n(n(s)));
 }
 
-void do_push_int(val)
-int val;
+static boolean condition(prog)
+memrange prog;
 {
-    s = kons(integer_, (value_t)val, s);
+    memrange save;
+    boolean result;
+
+    save = s;
+    dump = kons(list_, (value_t)save, dump);
+    joy(prog);
+    result = b(s);
+    s = save;
+    dump = n(dump);
+    return result;
 }
 
 /**
@@ -969,7 +1045,7 @@ memrange two;
 	str2 = table[num2].alf;
 	break;
     case string_:
-	str2 = (char *)v(two);
+	str2 = TO_POINTER(v(two));
 	break;
     }
     num1 = v(one);
@@ -978,7 +1054,7 @@ memrange two;
 	str1 = table[num1].alf;
 	break;
     case string_:
-	str1 = (char *)v(one);
+	str1 = TO_POINTER(v(one));
 	break;
     }
     if (str1 && str2) {
@@ -1069,13 +1145,13 @@ static void do_cons()
     char *str, tmp[10], *ptr;
 
     if (o(s) == string_) {
-	str = (char *)v(s);
+	str = TO_POINTER(v(s));
 	expand(tmp, (int)v(n(s)));
 	ptr = GC_malloc_atomic(strlen(tmp) + strlen(str) + 1);
 	sprintf(ptr, "%s%s", tmp, str);
-	s = kons(string_, (value_t)ptr, n(n(s)));
+	s = kons(string_, TO_INTEGER(ptr), n(n(s)));
     } else {
-	temp = kons(o(n(s)), v(n(s)), (memrange)v(s));
+	temp = kons(o(n(s)), v(n(s)), l(s));
 	s = kons(list_, (value_t)temp, n(n(s)));
     }
 }
@@ -1122,10 +1198,10 @@ static void do_uncons()
     int num, count;
 
     if (o(s) == string_) {
-	str = (char *)v(s);
+	str = TO_POINTER(v(s));
 	num = unpack((unsigned char *)str, &count);
 	temp = kons(count > 1 ? integer_ : char_, (value_t)num, n(s));
-	s = kons(string_, (value_t)GC_strdup(str + count), temp);
+	s = kons(string_, TO_INTEGER(GC_strdup(str + count)), temp);
     } else {
 	temp = kons(o(l(s)), v(l(s)), n(s));
 	s = kons(list_, (value_t)n(l(s)), temp);
@@ -1159,7 +1235,7 @@ static void do_of()
 
     val = v(n(s));
     if (o(s) == string_) {
-	for (str = (char *)v(s); val > 0; val--, str += count)
+	for (str = TO_POINTER(v(s)); val > 0; val--, str += count)
 	    num = unpack((unsigned char *)str, &count);
 	num = unpack((unsigned char *)str, &count);
 	s = kons(count > 1 ? integer_ : char_, (value_t)num, n(n(s)));
@@ -1273,7 +1349,7 @@ static void do_step()
     dump = kons(list_, (value_t)prog, dump);
     s = n(s);
     if (o(s) == string_) {
-	str = (char *)v(s);
+	str = TO_POINTER(v(s));
 	for (s = n(s); *str; str += count) {
 	    num = unpack((unsigned char *)str, &count);
 	    s = kons(count > 1 ? integer_ : char_, (value_t)num, s);
@@ -1298,14 +1374,16 @@ Creates an aggregate A containing the interpreter's command line arguments.
 static void do_argv()
 {
     int j;
-    memrange *dump1 = 0;
+    memrange *dump1;
 
-    s = kons(list_, (value_t)0, s);
-    dump1 = (memrange *)&m[s].val;
+    dump = kons(list_, (value_t)dump, 0);
+    dump1 = &m[dump].nxt;
     for (j = 0; j < g_argc; j++) {
-	*dump1 = kons(string_, (value_t)g_argv[j], 0);
+	*dump1 = kons(string_, TO_INTEGER(g_argv[j]), 0);
 	dump1 = &m[*dump1].nxt;
     }
+    s = kons(list_, (value_t)n(dump), s);
+    dump = l(dump);
 }
 
 /**
@@ -1316,7 +1394,7 @@ but leading "0" means base 8 and leading "0x" means base 16.
 */
 static void do_strtol()
 {
-    binary(integer_, (value_t)strtol((char *)v(n(s)), 0, (int)v(s)));
+    binary(integer_, (value_t)strtol(TO_POINTER(v(n(s))), 0, (int)v(s)));
 }
 
 /**
@@ -1325,8 +1403,7 @@ While executing B yields true executes D.
 */
 static void do_while()
 {
-    boolean result;
-    memrange prog[2], save;
+    memrange prog[2];
 
     prog[1] = l(s);
     dump = kons(list_, (value_t)prog[1], dump);
@@ -1334,17 +1411,8 @@ static void do_while()
     prog[0] = l(s);
     dump = kons(list_, (value_t)prog[0], dump);
     s = n(s);
-    while (1) {
-	save = s;
-	dump = kons(list_, (value_t)save, dump);
-	joy(prog[0]);
-	result = b(s);
-	s = save;
-	dump = n(dump);
-	if (!result)
-	    break;
+    while (condition(prog[0]))
 	joy(prog[1]);
-    }
     dump = n(n(dump));
 }
 
@@ -1411,7 +1479,7 @@ Pushes the standard input stream.
 */
 static void do_stdin()
 {
-    s = kons(file_, (value_t)stdin, s);
+    s = kons(file_, TO_INTEGER(stdin), s);
 }
 
 /**
@@ -1424,11 +1492,11 @@ static void do_fopen()
     FILE *fp;
     char *path, *mode;
 
-    mode = (char *)v(s);
+    mode = TO_POINTER(v(s));
     s = n(s);
-    path = (char *)v(s);
+    path = TO_POINTER(v(s));
     fp = fopen(path, mode);
-    s = kons(file_, (value_t)fp, n(s));
+    s = kons(file_, TO_INTEGER(fp), n(s));
 }
 
 /**
@@ -1441,7 +1509,7 @@ static void do_fgetch()
     int num, count;
     unsigned char str[10];
 
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     str[0] = getc(fp);
     if (str[0] >= 0xF0) {
 	str[1] = getc(fp);
@@ -1464,23 +1532,14 @@ static void do_feof()
 {
     FILE *fp;
 
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     s = kons(boolean_, (value_t)feof(fp), s);
 }
 
 static void binrecaux(prog)
 memrange prog[];
 {
-    memrange save;
-    boolean result;
-
-    save = s;
-    dump = kons(list_, (value_t)save, dump);	/* save stack */
-    joy(prog[0]);				/* condition */
-    result = b(s);				/* get result */
-    s = save;					/* restore stack */
-    dump = n(dump);
-    if (result)
+    if (condition(prog[0]))
 	joy(prog[1]);
     else {
 	joy(prog[2]);				/* split */
@@ -1541,7 +1600,7 @@ static void do_primrec()
     s = n(s);
     switch (o(data)) {
     case string_:
-	for (str = (char *)v(data); *str; str += count) {
+	for (str = TO_POINTER(v(data)); *str; str += count) {
 	    num = unpack((unsigned char *)str, &count);
 	    s = kons(count > 1 ? integer_ : char_, (value_t)num, s);
 	    k++;
@@ -1576,7 +1635,7 @@ Executes B. If that yields true, then executes T else executes F.
 static void do_ifte()
 {
     boolean result;
-    memrange prog[3], save;
+    memrange prog[3];
 
     prog[2] = l(s);
     dump = kons(list_, (value_t)prog[2], dump);
@@ -1586,12 +1645,9 @@ static void do_ifte()
     s = n(s);
     prog[0] = l(s);
     dump = kons(list_, (value_t)prog[0], dump);
-    save = s = n(s);
-    dump = kons(list_, (value_t)save, dump);
-    joy(prog[0]);
-    result = b(s);
-    s = save;
-    dump = n(n(dump));
+    s = n(s);
+    result = condition(prog[0]);
+    dump = n(dump);
     joy(result ? prog[1] : prog[2]);
     dump = n(n(dump));
 }
@@ -1599,16 +1655,7 @@ static void do_ifte()
 static void linrecaux(prog)
 memrange prog[];
 {
-    memrange save;
-    boolean result;
-
-    save = s;
-    dump = kons(list_, (value_t)save, dump);
-    joy(prog[0]);
-    result = b(s);
-    s = save;
-    dump = n(dump);
-    if (result)
+    if (condition(prog[0]))
 	joy(prog[1]);
     else {
 	joy(prog[2]);
@@ -1650,7 +1697,7 @@ static void do_putchars()
 {
     char *str;
 
-    str = (char *)v(s);
+    str = TO_POINTER(v(s));
     printf("%s", str);
     s = n(s);
 }
@@ -1663,7 +1710,7 @@ static void do_split()
 {
     char *str, *yes_str, *no_str;
     int num, count, yes_ptr = 0, no_ptr = 0;
-    memrange prog, save, aggr, *dump1 = 0, *dump2 = 0;
+    memrange prog, save, aggr, *dump1, *dump2;
 
     prog = l(s);
     dump = kons(list_, (value_t)prog, dump);
@@ -1671,7 +1718,7 @@ static void do_split()
     save = n(s);
     dump = kons(list_, (value_t)save, dump);
     if (o(s) == string_) {
-	str = (char *)v(s);
+	str = TO_POINTER(v(s));
 	no_str = GC_strdup(str);			/* false */
 	yes_str = GC_strdup(str);			/* true */
 	for (; *str; str += count) {
@@ -1688,15 +1735,15 @@ static void do_split()
 	}
 	yes_str[yes_ptr] = 0;
 	no_str[no_ptr] = 0;
-	s = kons(string_, (value_t)yes_str, save);	/* true */
-	s = kons(string_, (value_t)no_str, s);		/* false */
+	s = kons(string_, TO_INTEGER(yes_str), save);	/* true */
+	s = kons(string_, TO_INTEGER(no_str), s);	/* false */
     } else {
 	aggr = l(s);
 	dump = kons(list_, (value_t)aggr, dump);
-	dump = kons(list_, (value_t)0, dump);		/* false */
-	dump2 = (memrange *)&m[dump].val;
-	dump = kons(list_, (value_t)0, dump);		/* true */
-	dump1 = (memrange *)&m[dump].val;
+	dump = kons(list_, (value_t)dump, 0);		/* false */
+	dump2 = &m[dump].nxt;
+	dump = kons(list_, (value_t)dump, 0);		/* true */
+	dump1 = &m[dump].nxt;
 	for (; aggr; aggr = n(aggr)) {
 	    s = kons(o(aggr), v(aggr), save);
 	    joy(prog);
@@ -1708,10 +1755,11 @@ static void do_split()
 		dump2 = &m[*dump2].nxt;
 	    }
 	}
-	s = kons(list_, (value_t)l(dump), save);	/* true */
+	s = kons(list_, (value_t)n(dump), save);	/* true */
+	dump = l(dump);
+	s = kons(list_, (value_t)n(dump), s);		/* false */
+	dump = l(dump);
 	dump = n(dump);
-	s = kons(list_, (value_t)l(dump), s);		/* false */
-	dump = n(n(dump));
     }
     dump = n(n(dump));
 }
@@ -1726,22 +1774,22 @@ static void do_fread()
     FILE *fp;
     char *buf;
     int j, count;
-    memrange *dump1 = 0;
+    memrange *dump1;
 
     count = i(s);			/* number of characters to read */
     s = n(s);
-    fp = (FILE *)v(s);			/* file descriptor */
+    fp = TO_POINTER(v(s));		/* file descriptor */
     s = n(s);
     buf = GC_malloc_atomic(count);	/* buffer for characters to read */
     count = fread(buf, 1, count, fp);	/* number of characters read */
-    dump = kons(list_, (value_t)0, dump);
-    dump1 = (memrange *)&m[dump].val;
+    dump = kons(list_, (value_t)dump, 0);
+    dump1 = &m[dump].nxt;
     for (j = 0; j < count; j++) {
 	*dump1 = kons(integer_, (value_t)buf[j], 0);
 	dump1 = &m[*dump1].nxt;
     }
-    s = kons(list_, (value_t)l(dump), s);
-    dump = n(dump);
+    s = kons(list_, (value_t)n(dump), s);
+    dump = l(dump);
     GC_free(buf);
 }
 
@@ -1760,7 +1808,7 @@ static void do_fseek()
     s = n(s);
     pos = v(s);
     s = n(s);
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     pos = fseek(fp, pos, whence);
     s = kons(boolean_, (value_t)(pos != 0), s);
 }
@@ -1773,7 +1821,7 @@ static void do_fclose()
 {
     FILE *fp;
 
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     fclose(fp);
     s = n(s);
 }
@@ -1786,7 +1834,7 @@ static void do_filter()
 {
     char *str, *yes_str;
     int num, count, yes_ptr = 0;
-    memrange prog, save, aggr, *dump1 = 0;
+    memrange prog, save, aggr, *dump1;
 
     prog = l(s);
     dump = kons(list_, (value_t)prog, dump);
@@ -1794,7 +1842,7 @@ static void do_filter()
     save = n(s);
     dump = kons(list_, (value_t)save, dump);
     if (o(s) == string_) {
-	str = (char *)v(s);
+	str = TO_POINTER(v(s));
 	yes_str = GC_strdup(str);			/* true */
 	for (; *str; str += count) {
 	    num = unpack((unsigned char *)str, &count);
@@ -1806,12 +1854,12 @@ static void do_filter()
 	    }
 	}
 	yes_str[yes_ptr] = 0;
-	s = kons(string_, (value_t)yes_str, save);	/* true */
+	s = kons(string_, TO_INTEGER(yes_str), save);	/* true */
     } else {
 	aggr = l(s);
 	dump = kons(list_, (value_t)aggr, dump);
-	dump = kons(list_, (value_t)0, dump);		/* true */
-	dump1 = (memrange *)&m[dump].val;
+	dump = kons(list_, (value_t)dump, 0);		/* true */
+	dump1 = &m[dump].nxt;
 	for (; aggr; aggr = n(aggr)) {
 	    s = kons(o(aggr), v(aggr), save);
 	    joy(prog);
@@ -1820,8 +1868,9 @@ static void do_filter()
 		dump1 = &m[*dump1].nxt;
 	    }
 	}
-	s = kons(list_, (value_t)l(dump), save);
-	dump = n(n(dump));
+	s = kons(list_, (value_t)n(dump), save);
+	dump = l(dump);
+	dump = n(dump);
     }
     dump = n(n(dump));
 }
@@ -1836,7 +1885,7 @@ static void do_fremove()
     char *str;
     int result;
 
-    str = (char *)v(s);
+    str = TO_POINTER(v(s));
 #ifdef ATARI
     result = unlink(str);
 #else
@@ -1855,9 +1904,9 @@ static void do_frename()
     int result;
     char *p1, *p2;
 
-    p2 = (char *)v(s);
+    p2 = TO_POINTER(v(s));
     s = n(s);
-    p1 = (char *)v(s);
+    p1 = TO_POINTER(v(s));
     result = rename(p1, p2);
     s = kons(boolean_, (value_t)!result, n(s));
 }
@@ -1875,7 +1924,7 @@ static void do_drop()
     count = i(s);
     s = n(s);
     if (o(s) == string_) {
-	str = (unsigned char *)v(s);
+	str = TO_POINTER(v(s));
 	for (k = j = 0; j < count && str[k]; j++, k++) {
 	    if (str[k] >= 0xF0)
 		k += 3;
@@ -1885,7 +1934,7 @@ static void do_drop()
 		k++;
 	}
 	str = (unsigned char *)GC_strdup((char *)&str[k]);
-	s = kons(string_, (value_t)str, n(s));
+	s = kons(string_, TO_INTEGER(str), n(s));
     } else {
 	aggr = l(s);
 	while (count-- > 0 && aggr)
@@ -1902,12 +1951,12 @@ static void do_take()
 {
     int j, k, count;
     unsigned char *str;
-    memrange aggr, *dump1 = 0;
+    memrange aggr, *dump1;
 
     count = i(s);
     s = n(s);
     if (o(s) == string_) {
-	str = (unsigned char *)v(s);
+	str = TO_POINTER(v(s));
 	for (k = j = 0; j < count && str[k]; j++, k++) {
 	    if (str[k] >= 0xF0)
 		k += 3;
@@ -1919,17 +1968,17 @@ static void do_take()
 	if (str[k]) {
 	    str = (unsigned char *)GC_strdup((char *)str);
 	    str[k] = 0;
-	    s = kons(string_, (value_t)str, n(s));
+	    s = kons(string_, TO_INTEGER(str), n(s));
 	}
     } else {
-	dump = kons(list_, (value_t)0, dump);
-	dump1 = (memrange *)&m[dump].val;
+	dump = kons(list_, (value_t)dump, 0);
+	dump1 = &m[dump].nxt;
 	for (aggr = l(s); aggr && count; aggr = n(aggr), count--) {
 	    *dump1 = kons(o(aggr), v(aggr), 0);
 	    dump1 = &m[*dump1].nxt;
 	}
-	s = kons(list_, (value_t)l(dump), n(s));
-	dump = n(dump);
+	s = kons(list_, (value_t)n(dump), n(s));
+	dump = l(dump);
     }
 }
 
@@ -1939,12 +1988,7 @@ Pushes largest integer (platform dependent). Typically it is 32 bits.
 */
 static void do_maxint()
 {
-#ifndef ATARI
-    if (sizeof(value_t) == 8)
-	s = kons(integer_, (value_t)MAX_LONG_8, s);
-    else
-#endif
-	s = kons(integer_, (value_t)MAX_LONG_4, s);
+    s = kons(integer_, (value_t)MAX_LONG, s);
 }
 
 /**
@@ -1983,11 +2027,8 @@ static void do_name()
 {
     char *str;
 
-    if (o(s) == lib_)
-	str = table[v(s)].alf;
-    else
-	str = standardident_NAMES[o(s)];
-    s = kons(string_, (value_t)str, n(s));
+    str = o(s) == lib_ ? table[v(s)].alf : standardident_NAMES[o(s)];
+    s = kons(string_, TO_INTEGER(str), n(s));
 }
 
 /**
@@ -1996,7 +2037,10 @@ Pushes the current time (in seconds since the Epoch).
 */
 static void do_time()
 {
-    s = kons(integer_, (value_t)time(0), s);
+    time_t t;
+
+    time(&t);
+    s = kons(integer_, (value_t)t, s);
 }
 
 /**
@@ -2005,7 +2049,7 @@ Pushes the standard output stream.
 */
 static void do_stdout()
 {
-    s = kons(file_, (value_t)stdout, s);
+    s = kons(file_, TO_INTEGER(stdout), s);
 }
 
 /**
@@ -2014,7 +2058,7 @@ Pushes the standard error stream.
 */
 static void do_stderr()
 {
-    s = kons(file_, (value_t)stderr, s);
+    s = kons(file_, TO_INTEGER(stderr), s);
 }
 
 /**
@@ -2023,7 +2067,7 @@ Exit from Joy.
 */
 static void do_quit()
 {
-    my_exit(0);
+    my_exit(fatal_err);	/* not a fatal error, but should also end the program */
 }
 
 /**
@@ -2032,7 +2076,7 @@ Pushes the item whose name is "sym".
 */
 static void do_intern()
 {
-    strncpy(ident, (char *)v(s), identlength);
+    strncpy(ident, TO_POINTER(v(s)), identlength);
     ident[identlength] = 0;
     lookup();
     s = kons((unsigned char)id, (value_t)locatn, n(s));
@@ -2172,7 +2216,7 @@ static void do_case()
     s = n(s);
     while (n(aggr) && Compare(l(aggr), s))
 	aggr = n(aggr);
-    if (!n(aggr))
+    if (n(aggr) < 1)
 	joy(l(aggr));
     else {
 	s = n(s);
@@ -2224,7 +2268,7 @@ static void do_some()
     save = n(s);
     dump = kons(list_, (value_t)save, dump);
     if (o(s) == string_) {
-	for (str = (char *)v(s); *str; str += count) {
+	for (str = TO_POINTER(v(s)); *str; str += count) {
 	    num = unpack((unsigned char *)str, &count);
 	    s = kons(count > 1 ? integer_ : char_, (value_t)num, save);
 	    joy(prog);
@@ -2265,7 +2309,7 @@ static void do_all()
     save = n(s);
     dump = kons(list_, (value_t)save, dump);
     if (o(s) == string_) {
-	for (str = (char *)v(s); *str; str += count) {
+	for (str = TO_POINTER(v(s)); *str; str += count) {
 	    num = unpack((unsigned char *)str, &count);
 	    s = kons(count > 1 ? integer_ : char_, (value_t)num, save);
 	    joy(prog);
@@ -2297,10 +2341,10 @@ static void do_getenv()
 {
     char *str;
 
-    str = (char *)v(s);
+    str = TO_POINTER(v(s));
     if ((str = getenv(str)) == 0)
 	str = "";
-    s = kons(string_, (value_t)GC_strdup(str), n(s));
+    s = kons(string_, TO_INTEGER(GC_strdup(str)), n(s));
 }
 
 /**
@@ -2362,17 +2406,8 @@ static void do_condnestrec()
 static void tailrecaux(prog)
 memrange prog[];
 {
-    memrange save;
-    boolean result;
-
 tailrec:
-    save = s;
-    dump = kons(list_, (value_t)save, dump);
-    joy(prog[0]);
-    result = b(s);
-    s = save;
-    dump = n(dump);
-    if (result)
+    if (condition(prog[0]))
 	joy(prog[1]);
     else {
 	joy(prog[2]);
@@ -2419,7 +2454,7 @@ static void treegenrecaux()
     else {
 	joy(l(n(l(save))));	/* [O2] */
 	s = kons(o(save), v(save), s);
-	save = kons(funct_, (value_t)treegenrecaux, 0);
+	save = kons(funct_, TO_INTEGER(treegenrecaux), 0);
 	s = kons(list_, (value_t)save, s);
 	do_cons();
 	joy(n(n(l(l(s)))));	/* [C] */
@@ -2448,7 +2483,7 @@ static void treerecaux()
     memrange save;
 
     if (o(n(s)) == list_) {
-	save = kons(funct_, (value_t)treerecaux, 0);
+	save = kons(funct_, TO_INTEGER(treerecaux), 0);
 	s = kons(list_, (value_t)save, s);	/* T [[[O] C] treerecaux] */
 	do_cons();
 	joy(n(l(l(s))));		/* C */
@@ -2511,7 +2546,7 @@ static void do_map()
 {
     int num, count, yes_ptr = 0;
     char *str, *yes_str, tmp[10];
-    memrange prog, save, aggr, *dump1 = 0;
+    memrange prog, save, aggr, *dump1;
 
     prog = l(s);
     dump = kons(list_, (value_t)prog, dump);
@@ -2519,7 +2554,7 @@ static void do_map()
     save = n(s);
     dump = kons(list_, (value_t)save, dump);
     if (o(s) == string_) {
-	str = (char *)v(s);
+	str = TO_POINTER(v(s));
 	yes_str = GC_malloc_atomic(strlen(str) * 4 + 1);
 	for (; *str; str += count) {
 	    num = unpack((unsigned char *)str, &count);
@@ -2530,20 +2565,22 @@ static void do_map()
 	    strcpy(&yes_str[yes_ptr], tmp);
 	    yes_ptr += strlen(tmp);
 	}
-	s = kons(string_, (value_t)yes_str, save);
+	yes_str[yes_ptr] = 0;
+	s = kons(string_, TO_INTEGER(yes_str), save);
     } else {
 	aggr = l(s);
 	dump = kons(list_, (value_t)aggr, dump);
-	dump = kons(list_, (value_t)0, dump);
-	dump1 = (memrange *)&m[dump].val;
+	dump = kons(list_, (value_t)dump, 0);
+	dump1 = &m[dump].nxt;
 	for (; aggr; aggr = n(aggr)) {
 	    s = kons(o(aggr), v(aggr), save);
 	    joy(prog);
 	    *dump1 = kons(o(s), v(s), 0);
 	    dump1 = &m[*dump1].nxt;
 	}
-	s = kons(list_, v(dump), save);
-	dump = n(n(dump));
+	s = kons(list_, (value_t)n(dump), save);
+	dump = l(dump);
+	dump = n(dump);
     }
     dump = n(n(dump));
 }
@@ -2558,7 +2595,7 @@ static void do_fgets()
     char *buf, *tmp;
     int leng, size = maxlinelength;
 
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     buf = GC_malloc_atomic(size);
     buf[leng = 0] = 0;
     while (fgets(buf + leng, size - leng, fp)) {
@@ -2570,7 +2607,7 @@ static void do_fgets()
 	buf = tmp;
 	size *= 2;
     }
-    s = kons(string_, (value_t)buf, s);
+    s = kons(string_, TO_INTEGER(GC_strdup(buf)), s);
 }
 
 /**
@@ -2580,23 +2617,17 @@ Else executes R1 and then [[[B] [T] [R1] R2] genrecaux] R2.
 */
 static void genrecaux()
 {
-    boolean result;
     memrange prog, save;
 
     prog = l(s);
     dump = kons(list_, (value_t)prog, dump);
-    save = s = n(s);
-    dump = kons(list_, (value_t)save, dump);
-    joy(l(prog));		/* [B] */
-    result = b(s);
-    s = save;
-    dump = n(dump);
-    if (result)
+    s = n(s);
+    if (condition(l(prog)))	/* [B] */
 	joy(l(n(prog)));	/* [T] */
     else {
 	joy(l(n(n(prog))));	/* [R1] */
 	s = kons(list_, (value_t)prog, s);
-	save = kons(funct_, (value_t)genrecaux, 0);
+	save = kons(funct_, TO_INTEGER(genrecaux), 0);
 	s = kons(list_, (value_t)save, s);
 	do_cons();
 	joy(n(n(n(prog))));	/* [R2] */
@@ -2624,25 +2655,24 @@ Then executes each [Pi] to give Ri pushed onto saved stack.
 */
 static void do_construct()
 {
-    memrange prog[2], save, temp;
+    memrange prog[2], old_s, new_s;
 
     prog[1] = l(s);
     dump = kons(list_, (value_t)prog[1], dump);
     s = n(s);
     prog[0] = l(s);
     dump = kons(list_, (value_t)prog[0], dump);
-    s = n(s);		/* save old stack */
-    dump = kons(list_, (value_t)s, dump);
+    old_s = n(s);	/* save old stack */
+    dump = kons(list_, (value_t)old_s, dump);
     joy(prog[0]);	/* [P]		  */
-    save = s;		/* save new stack */
-    dump = kons(list_, (value_t)save, dump);
+    new_s = s;		/* save new stack */
+    dump = kons(list_, (value_t)new_s, dump);
     for (; prog[1]; prog[1] = n(prog[1])) {
 	joy(l(prog[1]));
-	temp = m[n(dump)].val;
-	m[n(dump)].val = kons(o(s), v(s), temp);	/* save result */
-	s = save;		/* restore new stack */
+	old_s = kons(o(s), v(s), old_s);	/* save result */
+	s = new_s;	/* restore new stack */
     }
-    s = m[n(dump)].val;		/* restore old stack */
+    s = old_s;		/* restore old stack */
     dump = n(n(n(n(dump))));
 }
 
@@ -2655,7 +2685,7 @@ static void do_ferror()
     FILE *fp;
     boolean result;
 
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     result = ferror(fp);
     s = kons(boolean_, (value_t)result, s);
 }
@@ -2668,7 +2698,7 @@ static void do_fflush()
 {
     FILE *fp;
 
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     fflush(fp);
 }
 
@@ -2685,7 +2715,7 @@ static void do_fwrite()
 
     temp = aggr = l(s);
     s = n(s);
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     for (j = 0; temp; temp = n(temp), j++)
 	;
     buf = GC_malloc_atomic(j);
@@ -2699,11 +2729,11 @@ static void printterm(node, fp)
 memrange node;
 FILE *fp;
 {
-    while (node > 0) {
+    while (node) {
 	printfactor(node, fp);
-	if (m[node].nxt > 0)
+	if (n(node))
 	    putc(' ', fp);
-	node = m[node].nxt;
+	node = n(node);
     }
 }  /* printterm */
 
@@ -2711,39 +2741,36 @@ static void printfactor(node, fp)
 memrange node;
 FILE *fp;
 {   /* was forward */
-    if (node > 0) {
-	switch (m[node].op) {
+    if (node) {
+	switch (o(node)) {
 	case list_:
 	    putc('[', fp);
-	    printterm((memrange)m[node].val, fp);
+	    printterm(l(node), fp);
 	    putc(']', fp);
 	    break;
 
 	case boolean_:
-	    if (m[node].val == 1)
-		fprintf(fp, "%s", "true");
-	    else
-		fprintf(fp, "%s", "false");
+	    fprintf(fp, "%s", v(node) == 1 ? "true" : "false");
 	    break;
 
 	case char_:
-	    putc(m[node].val, fp);
+	    putc(v(node), fp);
 	    break;
 
 	case integer_:
-	    fprintf(fp, "%ld", (long)m[node].val);
+	    fprintf(fp, format_int, v(node));
 	    break;
 
 	case string_:
-	    fprintf(fp, "\"%s\"", (char *)m[node].val);
+	    fprintf(fp, "\"%s\"", (char *)TO_POINTER(v(node)));
 	    break;
 
 	case file_:
-	    fprintf(fp, "%lx", (long)m[node].val);
+	    fprintf(fp, format_file, v(node));
 	    break;
 
 	case lib_:
-	    fprintf(fp, "%s", table[m[node].val].alf);
+	    fprintf(fp, "%s", table[v(node)].alf);
 	    break;
 
 	case funct_:
@@ -2751,11 +2778,11 @@ FILE *fp;
 	    break;
 
 	case unknownident:
-	    fprintf(fp, "%s", (char *)m[node].val);
+	    fprintf(fp, "%s", (char *)TO_POINTER(v(node)));
 	    break;
 
 	default:
-	    fprintf(fp, "%s", stdidents[m[node].val].alf);
+	    fprintf(fp, "%s", stdidents[v(node)].alf);
 	    break;
 	}  /* CASE */
     }
@@ -2772,7 +2799,7 @@ static void do_fput()
 
     node = s;
     s = n(s);
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     printfactor(node, fp);
 }
 
@@ -2787,7 +2814,7 @@ static void do_fputch()
 
     c = v(s);
     s = n(s);
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     putc(c, fp);
 }
 
@@ -2800,9 +2827,9 @@ static void do_fputchars()
     FILE *fp;
     char *str;
 
-    str = (char *)v(s);
+    str = TO_POINTER(v(s));
     s = n(s);
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     fprintf(fp, "%s", str);
 }
 
@@ -2815,7 +2842,7 @@ static void do_ftell()
     FILE *fp;
     value_t val;
 
-    fp = (FILE *)v(s);
+    fp = TO_POINTER(v(s));
     val = ftell(fp);
     s = kons(integer_, val, s);
 }
@@ -2890,17 +2917,17 @@ static void do_format()
     format[5] = spec;
     result = GC_malloc_atomic(maxlinelength);
     sprintf(result, format, width, prec, (long)v(s));
-    s = kons(string_, (value_t)result, n(s));
+    s = kons(string_, TO_INTEGER(GC_strdup(result)), n(s));
 }
 
 static void unmktime(t)
 struct tm *t;
 {
     int wday;
-    memrange *dump1 = 0;
+    memrange *dump1;
 
-    s = kons(list_, (value_t)0, n(s));
-    dump1 = (memrange *)&m[s].val;
+    dump = kons(list_, (value_t)dump, 0);
+    dump1 = &m[dump].nxt;
     *dump1 = kons(integer_, (value_t)(t->tm_year + 1900), 0);
     dump1 = &m[*dump1].nxt;
     *dump1 = kons(integer_, (value_t)(t->tm_mon + 1), 0);
@@ -2920,6 +2947,8 @@ struct tm *t;
     if ((wday = t->tm_wday) == 0)
 	wday = 7;
     *dump1 = kons(integer_, (value_t)wday, 0);
+    s = kons(list_, (value_t)n(dump), n(s));
+    dump = l(dump);
 }
 
 /**
@@ -2932,12 +2961,12 @@ weekday is 1 = Monday ... 7 = Sunday.
 */
 static void do_localtime()
 {
-    struct tm *t;
-    time_t timval;
+    time_t t;
+    struct tm *tm;
 
-    timval = v(s);
-    t = localtime(&timval);
-    unmktime(t);
+    t = v(s);
+    tm = localtime(&t);
+    unmktime(tm);
 }
 
 /**
@@ -2949,12 +2978,12 @@ isdst is false; weekday is 1 = Monday ... 7 = Sunday.
 */
 static void do_gmtime()
 {
-    struct tm *t;
-    time_t timval;
+    time_t t;
+    struct tm *tm;
 
-    timval = v(s);
-    t = gmtime(&timval);
-    unmktime(t);
+    t = v(s);
+    tm = gmtime(&t);
+    unmktime(tm);
 }
 
 static void decode(t)
@@ -3024,12 +3053,12 @@ static void do_strftime()
     struct tm t;
     char *format, *result;
 
-    format = (char *)v(s);
+    format = TO_POINTER(v(s));
     s = n(s);
     decode(&t);
     result = GC_malloc_atomic(maxlinelength);
     strftime(result, maxlinelength, format, &t);
-    s = kons(string_, (value_t)result, n(s));
+    s = kons(string_, TO_INTEGER(GC_strdup(result)), n(s));
 #endif
 }
 
@@ -3044,11 +3073,11 @@ static void do_filetime()
     time_t mtime;	/* modification time */
     struct stat *buf;	/* struct stat is big */
 
-    str = (char *)v(s);
+    str = TO_POINTER(v(s));
     mtime = 0;
     if ((fp = fopen(str, "r")) != 0) {
 	buf = GC_malloc_atomic(sizeof(struct stat));
-	if (fstat(fileno(fp), buf) >= 0)
+	if (fstat(fileno(fp), buf) == 0)
 	    mtime = buf->st_mtime;
 	fclose(fp);
 	GC_free(buf);
@@ -3083,7 +3112,6 @@ static void do_help()
 {
     int loc;
 
-    writeline();
     for (loc = lastlibloc; loc; loc--) {
 	putch(' ');
 	writeident(table[loc].alf);
@@ -3106,7 +3134,7 @@ static void do_size()
     int j = 0, count = 0;
 
     if (o(s) == string_) {
-	for (str = (char *)v(s); str[j]; j++)
+	for (str = TO_POINTER(v(s)); str[j]; j++)
 	    if ((str[j] & 0xC0) != 0x80)
 		count++;
     } else
@@ -3126,24 +3154,25 @@ static void do_concat()
     char *str, *str1, *str2;
 
     if (o(s) == string_) {
-	str1 = (char *)v(n(s));
-	str2 = (char *)v(s);
+	str1 = TO_POINTER(v(n(s)));
+	str2 = TO_POINTER(v(s));
 	leng = strlen(str1) + strlen(str2) + 1;
 	str = GC_malloc_atomic(leng);
 	sprintf(str, "%s%s", str1, str2);
-	s = kons(string_, (value_t)str, n(n(s)));
+	s = kons(string_, TO_INTEGER(str), n(n(s)));
     } else {
 	if ((aggr = l(n(s))) == 0)
-	    s = kons(list_, (value_t)l(s), n(n(s)));
+	    s = kons(list_, v(s), n(n(s)));
 	else {
-	    dump = kons(list_, (value_t)0, dump);
-	    for (dump1 = (memrange *)&m[dump].val; aggr; aggr = n(aggr)) {
+	    dump = kons(list_, (value_t)dump, 0);
+	    dump1 = &m[dump].nxt;
+	    for (; aggr; aggr = n(aggr)) {
 		*dump1 = kons(o(aggr), v(aggr), 0);
 		dump1 = &m[*dump1].nxt;
 	    }
 	    *dump1 = l(s);
-	    s = kons(list_, (value_t)l(dump), n(n(s)));
-	    dump = n(dump);
+	    s = kons(list_, (value_t)n(dump), n(n(s)));
+	    dump = l(dump);
 	}
     }
 }
@@ -3160,7 +3189,7 @@ static void do_in()
 
     elem = n(s);
     if (o(s) == string_) {
-	for (str = (char *)v(s); *str; str += count) {
+	for (str = TO_POINTER(v(s)); *str; str += count) {
 	    num = unpack((unsigned char *)str, &count);
 	    if (num == v(elem))
 		break;
@@ -3174,12 +3203,6 @@ static void do_in()
     s = kons(boolean_, (value_t)result, n(n(s)));
 }
 
-#ifdef NPROTO
-static int is_equal();					/* forward */
-#else
-static int is_equal(memrange one, memrange two);	/* forward */
-#endif
-
 /*
  * Check whether two lists are equal.
  */
@@ -3192,7 +3215,7 @@ memrange two;
     if (!one || !two)
 	return 0;	/* not equal */
     if (is_equal(one, two))
-	return is_equal_list(m[one].nxt, m[two].nxt);
+	return is_equal_list(n(one), n(two));
     return 0;		/* not equal */
 }
 
@@ -3204,7 +3227,7 @@ memrange one;
 memrange two;
 {
     if (o(one) == list_ && o(two) == list_)
-	return is_equal_list((memrange)m[one].val, (memrange)m[two].val);
+	return is_equal_list(l(one), l(two));
     return o(one) == o(two) && v(one) == v(two);
 }
 
@@ -3239,6 +3262,53 @@ static void do_times()
     dump = n(dump);
 }
 
+/**
+assign  :  V [N]  ->
+Assigns value V to the variable with name N.
+*/
+static void do_assign()
+{
+    int index;
+
+    index = v(l(s));
+    s = n(s);
+    table[index].adr = kons(o(s), v(s), 0);
+    s = n(s);
+}
+
+/**
+unassign  :  [N]  ->
+Sets the body of the name N to uninitialized.
+*/
+void do_unassign()
+{
+    int index;
+
+    index = v(l(s));
+    s = n(s);
+    table[index].adr = 0;
+}
+
+/**
+undefs  :  ->  [..]
+Push a list of all undefined symbols in the current symbol table.
+*/
+static void do_undefs()
+{
+    int j;
+    memrange *dump1;
+
+    dump = kons(list_, (value_t)dump, 0);
+    dump1 = &m[dump].nxt;
+    for (j = 1; j < lasttable; j++)
+	if (!table[j].adr) {
+	    *dump1 = kons(string_, TO_INTEGER(GC_strdup(table[j].alf)), 0);
+	    dump1 = &m[*dump1].nxt;
+	}
+    s = kons(list_, (value_t)n(dump), s);
+    dump = l(dump);
+}
+
 static void joy(node)
 memrange node;
 {
@@ -3252,21 +3322,19 @@ memrange node;
 	if (writelisting > 3) {
 	    writeident("stack: ");
 	    writeterm(s, true);
-	    writeident("dump: ");
-	    writeterm(dump, true);
 	}
-#ifdef DEBUG
+#if defined(DEBUG_G) || defined(DEBUG_S)
 	last_op_executed = o(node);
 #endif
 	switch (o(node)) {
 	case funct_:
-	    (*(proc_t)v(node))();
+	    (*(proc_t)TO_POINTER(v(node)))();
 	    break;
 
 	case char_:
 	case integer_:
-	case list_:
 	case string_:
+	case list_:
 	    s = kons(o(node), v(node), s);
 	    break;
 
@@ -3389,13 +3457,17 @@ memrange node;
 	    break;
 
 	case lib_:
-	    if ((temp = table[v(node)].adr) != 0)
+	    if ((temp = table[v(node)].adr) != 0) {
+#ifdef DEBUG_U
+		table[v(node)].used = 1;
+#endif		    
 		joy(temp);
-#ifdef UNDEFE
+	    }
+#ifdef UNDEF_E
 	    else {
-		printf("definition needed for %s (%ld)\n", table[v(node)].alf,
+		printf("\ndefinition needed for %s (%ld)\n", table[v(node)].alf,
 			(long)v(node));
-		my_exit(3);
+		my_exit(runtime_err);
 	    }
 #endif
 	    break;
@@ -3686,6 +3758,18 @@ memrange node;
 	    do_times();
 	    break;
 
+	case assign_:
+	    do_assign();
+	    break;
+
+	case unassign_:
+	    do_unassign();
+	    break;
+
+	case undefs_:
+	    do_undefs();
+	    break;
+
 	default:
 	    point('F', "internal error in interpreter");
 	}  /* CASE */
@@ -3712,7 +3796,8 @@ FILE *f;
     c[0] -= c[1];
     if (c[0] > 0)
 	fprintf(f, "%lu seconds CPU to execute\n", (unsigned long)c[0]);
-    fprintf(f, "%lu user nodes available\n", MAXMEM - firstusernode + 1L);
+    fprintf(f, "%lu user nodes available\n", (unsigned long)MAXMEM -
+	    firstusernode);
     fprintf(f, "%lu garbage collections\n", stat_gc);
     fprintf(f, "%lu nodes used\n", stat_kons);
     fprintf(f, "%lu calls to joy interpreter\n", stat_calls);
@@ -3726,13 +3811,38 @@ char *argv[];
     int j;
     char *ptr;
 
+    /*
+     * Fatal errors and end-of-file end the program. Other errors allow new
+     * programs to be read.
+     */
+    if ((j = setjmp(JL10)) == fatal_err) {
+#ifdef DEBUG_S
+	printf("last_op_executed: %-*.*s\n", identlength, identlength,
+		standardident_NAMES[last_op_executed]);
+	writeident("stack: ");
+	writeterm(s, true);
+#endif
+	goto einde;
+    }
+    if (j == runtime_err)
+	goto begin;
+    /*
+     * Initialize clock, scanner and symbol table.
+     */
     initialise();
+    /*
+     * Initialize freelist.
+     */
     for (freelist = j = 1; j < MAXMEM; j++)
 	m[j].nxt = j + 1;
+    m[MAXMEM - 1].nxt = 0;
     /*
-     * Extract the pathname from the joy binary.
+     * Extract the pathname from the joy binary, to be prepended to include
+     * files, in case the include file was not found in the current directory.
      */
-    if ((ptr = strrchr(argv[0], '/')) != 0) {
+    if ((ptr = strrchr(argv[0], '/')) == 0)
+	ptr = strrchr(argv[0], '\\');
+    if (ptr) {
 	/*
 	 * Remove the joy binary, keep the separator.
 	 */
@@ -3749,7 +3859,7 @@ char *argv[];
      * no definitions.
      */
     readlibrary(lib_filename);
-    stat_lib = time(0);
+    time(&stat_lib);
     if (writelisting > 1)
 	for (j = 1; j <= lastlibloc; j++) {
 	    fprintf(listing, "\"%-*.*s\" :\n", identlength, identlength,
@@ -3761,13 +3871,10 @@ char *argv[];
      */
     if (argc > 1)
 	newfile(argv[1], 0);
-    if ((j = setjmp(JL10)) > 1) {
-	j -= 2;
-	goto einde;
-    }
+begin:    
     while (1) {
 	getsym();
-#ifdef DEBUG
+#if defined(DEBUG_G) || defined(DEBUG_S)
 	last_op_executed = get_;
 #endif
 	programme = 0;
@@ -3791,7 +3898,7 @@ char *argv[];
 	    fflush(stdout);
 	    s = n(s);
 	}
-	if (outlinelength > 0)
+	if (outlinelength)
 	    writeline();
 	if (writelisting > 1) {
 	    writeident("stack: ");
@@ -3799,45 +3906,52 @@ char *argv[];
 	}
     }
 einde:
-#ifdef DEBUGM
+#ifdef DEBUG_M
     DumpM();
+#endif
+#ifdef DEBUG_U
+    DumpU();
 #endif
     perhapsstatistics();
     SetNormal();
-    return j;
+    return 0;
 }
 
 static void perhapsstatistics()
 {
     finalise();
-    if (statistics > 0) {
+    if (statistics) {
 	fflush(stdout);
 	writestatistics(stderr);
-	if (writelisting > 0)
+	if (writelisting)
 	    writestatistics(listing);
     }
 }
 
+/*
+ * Called from the scan utilities, that do not have access to JL10.
+ */
 static void my_exit(code)
 int code;
 {
-    longjmp(JL10, 2 + code);
+    longjmp(JL10, code);
 }
 
+#ifndef BDWGC
 static void mark_str(node)
 memrange node;
 {
     char *str;
 
-    while (node > 0) {
-	if (m[node].op == list_)
-	    mark_str((memrange)m[node].val);
-	if (m[node].op == string_) {
-	    str = (char *)m[node].val;
-	    if (str[-1] == 0)
+    while (node) {
+	if (o(node) == list_)
+	    mark_str(l(node));
+	if (o(node) == string_) {
+	    str = TO_POINTER(v(node));
+	    if (!str[-1])
 		str[-1] = 1;
 	}
-	node = m[node].nxt;
+	node = n(node);
     }
 }  /* mark_str */
 
@@ -3847,3 +3961,4 @@ void mark_string()
     mark_str(s);
     mark_str(dump);
 }
+#endif

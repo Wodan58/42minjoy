@@ -1,1 +1,4 @@
 *.tar
+*.lst
+build
+demo*.txt
