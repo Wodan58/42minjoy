@@ -1,7 +1,7 @@
 /*
     module  : scanutil.c
-    version : 1.21
-    date    : 02/10/25
+    version : 1.25
+    date    : 02/19/25
 */
 /* scanutil.c: Included file for scan utilities */
 
@@ -166,32 +166,35 @@ standardident symb;
 } /* est */
 #endif
 
+/*
+ * A file that needs to be opened is first tried in the current directory, then
+ * in the directory where the Joy binary is located. This applies to all files:
+ * 42minjoy.lib, a filename parameter and included files. The filename
+ * parameter has flag equal to 0.
+ */
 static void newfile(str, flag)
 char *str;
 int flag;
 {
     FILE *fp;
+    int leng;
     char *ptr;
 
-    if (!flag) {
-	if ((srcfile = fopen(str, "r")) == 0) {
-	    fprintf(stderr, "%s (not open for reading)\n", str);
-	    my_exit(2);		/* fatal error */
-	}
-	adjustment = 0;
-	return;
-    }
     /*
      * Str may contain a pathname. The pathname must be stripped, because
-     * identlength may not be large enough to hold a pathname. The name is
-     * only used in error messages and does not need a pathname.
+     * identlength may not be large enough to hold a pathname. This name
+     * is only used in error messages and does not need a pathname.
      */
-    if ((ptr = strrchr(str, '/')) != 0)
-	ptr++;
-    else
-	ptr = str;
-    strncpy(inputs[includelevel].nam, ptr, identlength);
-    inputs[includelevel].lastlinenumber = linenumber;
+    if (flag) {
+	if ((ptr = strrchr(str, '/')) == 0)
+	    ptr = strrchr(str, '\\');
+	if (ptr)
+	    ptr++;
+	else
+	    ptr = str;
+	strncpy(inputs[includelevel].nam, ptr, identlength);
+	inputs[includelevel].lastlinenumber = linenumber;
+    }
     /*
      * Try to open the file. If that fails, it is tried again, with pathname
      * prepended.
@@ -202,19 +205,22 @@ int flag;
 	 * fails, the program fails. Pathname itself is a global variable.
 	 */
 	if (pathname) {
-	    flag = strlen(pathname) + strlen(str) + 1;
-	    ptr = (char *)GC_malloc_atomic(flag);
+	    leng = strlen(pathname) + strlen(str) + 1;
+	    ptr = (char *)GC_malloc_atomic(leng);
 	    sprintf(ptr, "%s%s", pathname, str);
 	    fp = fopen(ptr, "r");
 	    GC_free(ptr);
 	}
 	if (!fp) {
 	    fprintf(stderr, "%s (not open for reading)\n", str);
-	    my_exit(2);		/* fatal error */
+	    my_exit(2);	/* fatal error */
 	}
     }
-    inputs[includelevel].fil = fp;
-    adjustment = 1;
+    if (!flag)
+	srcfile = fp;	/* srcfile is not stored in inputs[] */
+    else
+        inputs[includelevel].fil = fp;
+    adjustment = flag;
 } /* newfile */
 
 static void perhapslisting()
@@ -233,11 +239,11 @@ static void perhapslisting()
 
 static void getch()
 {
-    FILE *f;
+    FILE *fp;
     char *ptr;
 
     if (cc == ll) {
-	if (adjustment != 0) {
+	if (adjustment) {
 	    if (adjustment == -1)
 		linenumber = inputs[includelevel - 1].lastlinenumber;
 	    else
@@ -248,26 +254,18 @@ static void getch()
 	linenumber++;
 	ll = 0;
 	cc = 0;
-	if (!includelevel) {
-	    if (fgets(line, maxlinelength, srcfile)) {
-		if ((ptr = strchr(line, '\n')) != 0)
-		    *ptr = 0;
-		ll = strlen(line);
-		perhapslisting();
-	    } else
-		my_exit(2);	/* fatal error */
+	fp = includelevel ? inputs[includelevel - 1].fil : srcfile;
+	if (fgets(line, maxlinelength, fp)) {
+	    if ((ptr = strchr(line, '\n')) != 0)
+		*ptr = 0;
+	    ll = strlen(line);
+	    perhapslisting();
 	} else {
-	    f = inputs[includelevel - 1].fil;
-	    if (fgets(line, maxlinelength, f)) {
-		if ((ptr = strchr(line, '\n')) != 0)
-		    *ptr = 0;
-		ll = strlen(line);
-		perhapslisting();
-	    } else {
-		fclose(f);
-		inputs[includelevel - 1].fil = 0;
-		adjustment = -1;
-	    }
+	    if (!includelevel)
+		my_exit(2);	/* "fatal" error */
+	    fclose(fp);
+	    inputs[includelevel - 1].fil = 0;
+	    adjustment = -1;
 	}
 	line[ll++] = ' ';
     } /* IF */

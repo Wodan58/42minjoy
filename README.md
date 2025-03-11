@@ -21,6 +21,6 @@ Installation
     rm -rf build
     mkdir build
     cd build
-    CC=gcc CXX=gcc cmake -G "Unix Makefiles" ..
+    cmake -G "Unix Makefiles" ..
     cmake --build .
     cp joy.exe ..

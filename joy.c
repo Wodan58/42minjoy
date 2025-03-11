@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.53
-    date    : 02/10/25
+    version : 1.56
+    date    : 02/19/25
 */
 #include <stdio.h>
 #include <string.h>
@@ -9,15 +9,10 @@
 #include <stdlib.h>
 #include <time.h>
 #include <setjmp.h>
-/*
- * ATARI 1040 STF running under Minix 1.5
- */
-#ifdef ATARI
-typedef long intptr_t;
-#else
+#ifndef ATARI
 #include <stdint.h>
 #endif
-#include <sys/stat.h>	/* filetime */
+#include <sys/stat.h>	/* filetime         */
 #include "gc.h"		/* GC_malloc_atomic */
 
 #if 0
@@ -57,24 +52,24 @@ typedef long intptr_t;
 /*
  * Maxint reports the maximum value an integer can hold. Integers are kept in
  * value_t and only two different sizes are expected.
+ *
+ * ATARI 1040 STF running under Minix 1.5.
  */
 #ifdef ATARI
-#define MAX_LONG	2147483647L
 #define format_int	"%ld"
 #define format_file	"%lx"
+#define format_long	"%*.*ld"
+#define MAX_LONG	2147483647L
+#define TO_POINTER(x)	((void *)(long)(x))
+#define TO_INTEGER(x)	((value_t)(long)(x))
 #else
-#define MAX_LONG	9223372036854775807LL
 #define format_int	"%lld"
 #define format_file	"%llx"
-#endif
-
-/*
- * These macros can be used to convert pointers to integers of a different size
- * and to convert integers to pointers of a different size, just to placate the
- * C compiler.
- */
+#define format_long	"%*.*lld"
+#define MAX_LONG	9223372036854775807LL
 #define TO_POINTER(x)	((void *)(intptr_t)(x))
 #define TO_INTEGER(x)	((value_t)(intptr_t)(x))
+#endif
 
 typedef unsigned char boolean;
 
@@ -266,7 +261,7 @@ static void initialise()
 #define MAXTABLE	500
 #endif
 #ifndef MAXMEM
-#define MAXMEM		2140
+#define MAXMEM		2066
 #endif
 
 typedef struct _REC_table {
@@ -319,7 +314,7 @@ static char *standardident_NAMES[] = {
 #ifdef DEBUG_M
 void DumpM()
 {
-    int j;
+    memrange j;
     FILE *fp = fopen("42minjoy.dmp", "w");
 
     fprintf(fp, "Table\n");
@@ -338,7 +333,7 @@ void DumpM()
 	if (m[j].op == string_)
 	    fprintf(fp, "%-15.15s", (char *)m[j].val);
 	else
-	    fprintf(fp, "%15ld", (long)m[j].val);
+	    fprintf(fp, format_int, m[j].val);
 	fprintf(fp, " %4d %c\n", m[j].nxt, m[j].marked == persistent ? 'P' :
 		'T');
     }
@@ -436,11 +431,13 @@ memrange node;
 	    identlength, standardident_NAMES[m[node].op], (memrange)m[node].val,
 	    m[node].nxt, m[node].marked == persistent ? 'P' : m[node].marked ?
 	    'T' : 'F');
-    else
-	fprintf(f, "%5d %-*.*s %10ld %10d %c", node, identlength,
-	    identlength, standardident_NAMES[m[node].op], (long)m[node].val,
-	    m[node].nxt, m[node].marked == persistent ? 'P' : m[node].marked ?
-	    'T' : 'F');
+    else {
+	fprintf(f, "%5d %-*.*s ", node, identlength, identlength,
+		standardident_NAMES[m[node].op]);
+	fprintf(f, format_int, m[node].val);
+	fprintf(f, " %10d %c", m[node].nxt, m[node].marked == persistent ?
+		'P' : m[node].marked ? 'T' : 'F');
+    }
     if (m[node].op == lib_)
 	fprintf(f, "   %-*.*s %4d", identlength, identlength,
 		table[m[node].val].alf, table[m[node].val].adr);
@@ -1111,13 +1108,13 @@ int *second;
     *second = num - num / 64 * 64;
 }
 
-static void expand(str, num)
+static void expand(str, val)
 char *str;
-int num;
+value_t val;
 {
-    int tmp[6];
+    int num, tmp[6];
 
-    if (num < 128)
+    if ((num = val) < 128)
 	sprintf(str, "%c", num);
     else if (num < 2048) {
 	split(num, &tmp[0], &tmp[1]);
@@ -1146,7 +1143,7 @@ static void do_cons()
 
     if (o(s) == string_) {
 	str = TO_POINTER(v(s));
-	expand(tmp, (int)v(n(s)));
+	expand(tmp, v(n(s)));
 	ptr = GC_malloc_atomic(strlen(tmp) + strlen(str) + 1);
 	sprintf(ptr, "%s%s", tmp, str);
 	s = kons(string_, TO_INTEGER(ptr), n(n(s)));
@@ -1273,7 +1270,7 @@ static void do_putch()
 {
     char str[10];
 
-    expand(str, (int)v(s));
+    expand(str, v(s));
     printf("%s", str);
     s = n(s);
 }
@@ -1394,7 +1391,11 @@ but leading "0" means base 8 and leading "0x" means base 16.
 */
 static void do_strtol()
 {
-    binary(integer_, (value_t)strtol(TO_POINTER(v(n(s))), 0, (int)v(s)));
+#ifdef ATARI
+    binary(integer_, (value_t)strtol(TO_POINTER(v(n(s))), 0, v(s)));
+#else
+    binary(integer_, (value_t)strtoll(TO_POINTER(v(n(s))), 0, v(s)));
+#endif
 }
 
 /**
@@ -2561,7 +2562,7 @@ static void do_map()
 	    s = kons(count > 1 ? integer_ : char_, (value_t)num, save);
 	    joy(prog);
 	    num = v(s);
-	    expand(tmp, num);
+	    expand(tmp, (value_t)num);
 	    strcpy(&yes_str[yes_ptr], tmp);
 	    yes_ptr += strlen(tmp);
 	}
@@ -2913,10 +2914,11 @@ static void do_format()
     s = n(s);
     spec = v(s);
     s = n(s);
-    strcpy(format, "%*.*ld");
-    format[5] = spec;
+    strcpy(format, format_long);
+    if ((result = strrchr(format, 'd')) != 0)
+	*result = spec;
     result = GC_malloc_atomic(maxlinelength);
-    sprintf(result, format, width, prec, (long)v(s));
+    sprintf(result, format, width, prec, v(s));
     s = kons(string_, TO_INTEGER(GC_strdup(result)), n(s));
 }
 
@@ -3465,8 +3467,8 @@ memrange node;
 	    }
 #ifdef UNDEF_E
 	    else {
-		printf("\ndefinition needed for %s (%ld)\n", table[v(node)].alf,
-			(long)v(node));
+		printf("\ndefinition needed for %s (%ld)\n",
+			table[v(node)].alf, (long)v(node));
 		my_exit(runtime_err);
 	    }
 #endif
@@ -3808,8 +3810,8 @@ int main(argc, argv)
 int argc;
 char *argv[];
 {  /* main */
-    int j;
     char *ptr;
+    memrange j;
 
     /*
      * Fatal errors and end-of-file end the program. Other errors allow new

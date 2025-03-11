@@ -1,7 +1,7 @@
 (*
     module  : 42minjoy.lib
-    version : 1.10
-    date    : 02/10/25
+    version : 1.13
+    date    : 02/24/25
 *)
 
 (*
@@ -14,10 +14,14 @@
 
     Set E to 1 : include extra's, not needed for tutorial.joy
     Set E to 0 : exclude extra's
+
+    Set K to 1 : read from keyboard
+    Set K to 0 : read from a textfile
 *)
 %SET G = 0
 %SET A = 0
 %SET E = 0
+%SET K = 0
 
 (*
     Announce loading of the library.
@@ -61,6 +65,9 @@
 %IF = G 1 %INCLUDE G3/box.joy
 
 	branch		==  swap pairlist of i			 ;
+
+%IF = G 1 %INCLUDE G3/bigset.joy
+
 	c		==  swapd i			 	 ;
 	call		==  [] cons i				 ;
 	car		==  uncons pop				 ;
@@ -85,9 +92,6 @@
 
 %IF = G 1 %INCLUDE G3/color.joy
 
-	construct0	==  [dip swap] map			 ;
-	construct1	==  [[dip swap] map] unary		 ;
-	construct2	==  [[nullary] cons dip swap] map	 ;
 	contains	==  false swap [= or] cons fold 	 ;
 	cube		==  dup dup * *				 ;
 
@@ -204,29 +208,11 @@
 
 	pairlist	==  [] cons cons			 ;
 	pairlists	==  [pairlist] zip			 ;
-	partition	==  [[][]] dip
-			    dup
-			    [ first >
-			      [cnos]
-			      [swap [cnos] dip]
-			      branch ]
-			    cons
-			    [dup] first cnos
-			    step				 ;
-	partition1	==  [[][]] dip
-			    dup first
-			    [ first >
-			      [cnos]
-			      [swap [cnos] dip]
-			      branch ]
-			    cons
-			    [first] first cnos
-			    [dup] first cnos
-			    step				 ;
 
 %IF = G 1 %INCLUDE G3/percent.joy
 
 	pop2		==  pop pop				 ;
+	pop3		==  pop2 pop				 ;
 	popd		==  [pop] dip				 ;
 	positive	==  0 >					 ;
 
@@ -244,8 +230,6 @@
 			    pop				 	 ;
 	putln		==  put newline				 ;
 	putsp		==  put space put			 ;
-	qsort		==  [small] [] [uncons [>] split]
-			    [swapd cons concat] binrec		 ;
 								(*
 	quicksort       :   IF the list has only 0 or 1 member
 				THEN leave it as it is
@@ -253,18 +237,10 @@
 				     quicksort both,
 				     concatenate them
 								*)
-	quicksort	==  dup small
-			    []
-			    [ partition
-			      quicksort [quicksort] dip
-			      concat ]
-			    branch				 ;
-	quicksort1	==  dup small
-			    []
-			    [ partition1
-			      quicksort1 [quicksort1] dip
-			      concat ]
-			    branch				 ;
+	qsort		==  [small] [] [uncons [>] split]
+			    [enconcat] binrec			 ;
+	qsort1		==  [small] [] [uncons [[first] unary2 >]
+			    split] [enconcat] binrec		 ;
 
 %IF = G 1 %INCLUDE G3/read.joy
 (*
