@@ -1,7 +1,7 @@
 (*
     module  : 42minjoy.lib
-    version : 1.13
-    date    : 02/24/25
+    version : 1.14
+    date    : 07/21/25
 *)
 
 (*
@@ -211,6 +211,8 @@
 
 %IF = G 1 %INCLUDE G3/percent.joy
 
+	pick_bottom	==  stack dup size over first - drop
+			    first				 ;
 	pop2		==  pop pop				 ;
 	pop3		==  pop2 pop				 ;
 	popd		==  [pop] dip				 ;
@@ -226,8 +228,8 @@
 
 %IF = G 1 %INCLUDE G3/profit.joy
 
-	ps		==  clrscr putchars stack putln getkey
-			    pop				 	 ;
+	ps		==  clrscr stack putln stdin fgetch pop
+			    pop					 ;
 	putln		==  put newline				 ;
 	putsp		==  put space put			 ;
 								(*

@@ -1,7 +1,7 @@
 /*
     module  : joy.c
-    version : 1.56
-    date    : 02/19/25
+    version : 1.57
+    date    : 07/21/25
 */
 #include <stdio.h>
 #include <string.h>
@@ -261,7 +261,7 @@ static void initialise()
 #define MAXTABLE	500
 #endif
 #ifndef MAXMEM
-#define MAXMEM		2066
+#define MAXMEM		2075
 #endif
 
 typedef struct _REC_table {
@@ -3093,8 +3093,8 @@ Pushes an extra copy of nth (e.g. 2) item X on top of the stack.
 */
 static void do_pick()
 {
-    int j, size;
     memrange item;
+    value_t j, size;
 
     size = v(s);	/* pick up the number */
     s = n(s);		/* remove top of stack */
