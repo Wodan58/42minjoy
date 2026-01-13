@@ -7,12 +7,12 @@
 .SUFFIXES:
 
 # CC is taken from the environment
-CFLAGS = -DBDWGC -DMAXMEM=65535 -DNCHECK -O3 -Wall -Wextra -Werror -Wno-old-style-definition -Wno-knr-promoted-parameter
+CFLAGS = -I../gc-8.2.10/include -DBDWGC -DMAXMEM=65535 -DNCHECK -O3 -Wall -Wextra -Werror -Wno-old-style-definition -Wno-knr-promoted-parameter
 LDFLAGS = -static -Wl,--build-id=none -Wl,-Map=joy.map
 OBJECTS = joy.o setraw.o
 
 joy: $(OBJECTS)
-	$(CC) -o$@ $(OBJECTS) $(LDFLAGS) -L../bdwgc/build -lgc
+	$(CC) -o$@ $(OBJECTS) $(LDFLAGS) -L../gc-8.2.10/build -lgc
 
 joy.o: joy.c scanutil.c
 

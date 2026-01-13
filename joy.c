@@ -13,7 +13,7 @@
 #include <stdint.h>
 #endif
 #include <sys/stat.h>	/* filetime         */
-#include "gc.h"		/* GC_malloc_atomic */
+#include <gc.h>		/* GC_malloc_atomic */
 
 #if 0
 #define DEBUG_G		/* garbage collect  */
